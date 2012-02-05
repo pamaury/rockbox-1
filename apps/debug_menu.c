@@ -2055,9 +2055,10 @@ static bool dbg_scrollwheel(void)
 }
 #endif
 
-#ifdef HAVE_USBSTACK
-#if defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)
-static bool toggle_usb_serial(void)
+#if defined (HAVE_USBSTACK)
+
+#if (defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)) || defined(USB_ENABLE_UART_SERIAL)
+static bool toggle_usb_core_driver(int driver, char *msg)
 {
     bool enabled = !usb_core_driver_enabled(USB_DRIVER_SERIAL);
 
@@ -2066,7 +2067,22 @@ static bool toggle_usb_serial(void)
 
     return false;
 }
+
+#ifdef USB_ENABLE_SERIAL
+static bool toggle_usb_serial(void)
+{
+    return toggle_usb_core_driver(USB_DRIVER_SERIAL,"USB Serial");
+}
 #endif
+
+#ifdef USB_ENABLE_UART_SERIAL
+static bool toggle_usb_uart_serial(void)
+{
+    return toggle_usb_core_driver(USB_DRIVER_UART_SERIAL,"USB UART Serial");
+}
+#endif
+#endif
+
 #endif
 
 #if CONFIG_USBOTG == USBOTG_ISP1583
@@ -2121,6 +2137,84 @@ static bool dbg_pic(void)
 }
 #endif
 
+#ifdef MIO_C510
+static bool mioc510_battery_debug(void)
+{
+    lcd_setfont(FONT_SYSFIXED);
+
+    while (1)
+    {
+        if (action_userabort(HZ/10))
+            break;
+
+        lcd_clear_display();
+
+        /* show internal variables of scrollwheel driver */
+        lcd_putsf(0, 0, "GPG1: %d", !!(GPGDAT & (1 << 1)));
+        lcd_putsf(0, 1, "GPG8: %d", !!(GPGDAT & (1 << 8)));
+        lcd_putsf(0, 2, "GPG9: %d", !!(GPGDAT & (1 << 9)));
+        lcd_putsf(0, 3, "GPG10: %d", !!(GPGDAT & (1 << 10)));
+        lcd_putsf(0, 4, "GPG11: %d", !!(GPGDAT & (1 << 11)));
+        lcd_putsf(0, 5, "GPB9: %d", !!(GPBDAT & (1 << 9)));
+        lcd_putsf(0, 6, "Voltage: 0x%x/%d", adc_read(ADC_BATTERY), adc_read(ADC_BATTERY));
+        lcd_putsf(0, 7, "ep_int: %x usb_int: %x", EP_INT_REG, USB_INT_REG);
+        INDEX_REG = 0;
+        lcd_putsf(0, 8, "ep0_csr: %x", EP0_CSR);
+        for(int i = 1; i < USB_NUM_ENDPOINTS; i++)
+        {
+            INDEX_REG = i;
+            lcd_putsf(0, 8 + i, "ep%d: in_csr=%x out_csr=%x", i, IN_CSR1_REG, OUT_CSR1_REG);
+        }
+        lcd_putsf(0, 13, "nCTS: %d/%d nRTS %d", !(UMSTAT0 & 1), GPHDAT & 1, (GPHDAT & 2) >> 1);
+        lcd_putsf(0, 14, "tx: sz=%d (f=%d) rx: sz=%d (f=%d)",
+            (UFSTAT0 >> 8) & 0x1f, UFSTAT0 >> 14, UFSTAT0 & 0x1f, (UFSTAT0 >> 6) & 1);
+        lcd_putsf(0, 15, "UMCON0=%lx UFCON0=%lx UTRSTAT0=%lx", UMCON0, UFCON0, UTRSTAT0);
+
+        if(button_read_device() & BUTTON_VOL_UP)
+        {
+            if(GPGDAT & (1 << 11))
+                GPGDAT &= ~(1 << 11);
+            else
+                GPGDAT |= 1 << 11;
+        }
+        if(button_read_device() & BUTTON_VOL_DOWN)
+        {
+            if(GPBDAT & (1 << 9))
+                GPBDAT &= ~(1 << 9);
+            else
+                GPBDAT |= 1 << 9;
+        }
+
+        lcd_update();
+    }
+    /*
+    lcd_clear_display();
+    lcd_putsf(0, 0, "Testing disk speed...");
+    lcd_update();
+
+    #define SEC_CNT 20
+    static unsigned char buffer[SEC_CNT * SECTOR_SIZE];
+    int cnt = 100;
+
+    int start = current_tick;
+    for(int i = 0; i < cnt; i++)
+        storage_read_sectors(IF_MD2(0, ) cnt * SEC_CNT, SEC_CNT, buffer);
+    int end = current_tick;
+    lcd_putsf(0, 1, "Transferred: %d Kib", cnt * SEC_CNT * SECTOR_SIZE / 1024);
+    lcd_putsf(0, 2, "Time: %d msec", (end - start) * 1000 / HZ);
+    lcd_putsf(0, 3, "~Speed: %d Kib/s", cnt * SEC_CNT * SECTOR_SIZE / 1024 * HZ / (end - start));
+    lcd_update();
+
+    while (1)
+    {
+        if (action_userabort(HZ/10))
+            break;
+    }
+    */
+    lcd_setfont(FONT_UI);
+    return false;
+}
+#endif
 
 /****** The menu *********/
 static const struct {
@@ -2220,6 +2314,9 @@ static const struct {
 #if defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)
         {"USB Serial driver (logf)", toggle_usb_serial },
 #endif
+#if defined(USB_ENABLE_UART_SERIAL)
+        {"USB UART Serial driver ", toggle_usb_uart_serial },
+#endif
 #endif /* HAVE_USBSTACK */
 #ifdef CPU_BOOST_LOGGING
         {"cpu_boost log",cpu_boost_log},
@@ -2227,6 +2324,9 @@ static const struct {
 #if (defined(HAVE_WHEEL_ACCELERATION) && (CONFIG_KEYPAD==IPOD_4G_PAD) \
      && !defined(IPOD_MINI) && !defined(SIMULATOR))
         {"Debug scrollwheel", dbg_scrollwheel },
+#endif
+#if defined(MIO_C510)
+        {"Mio C510 Battery debug", mioc510_battery_debug },
 #endif
 };
 

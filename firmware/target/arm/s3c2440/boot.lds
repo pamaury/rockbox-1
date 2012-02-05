@@ -61,6 +61,9 @@ SECTIONS
 
     _initdata_end =.;
 
+    /* For the Mio C510 */
+    _binary_size = _initdata_end - _vectorstart;
+
     .stack (NOLOAD) :
     {
        *(.stack)

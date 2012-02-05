@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright © 2009 by Bob Cousins
+ * Copyright (c) 2011 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,45 +18,65 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-
-#ifndef _DMA_TARGET_H
-#define _DMA_TARGET_H
-
-#include <stdbool.h>
 #include <stdlib.h>
+#include "config.h"
+#include "system.h"
+#include "kernel.h"
+#include "logf.h"
+#include "audio.h"
+#include "sound.h"
+#include "file.h"
+#include "pcm-internal.h"
 
-/* DMA Channel assignments */
-#ifdef GIGABEAT_F
-#define DMA_CHAN_ATA        0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MINI2440)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MIO_C510)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#else
-#error Unsupported target
-#endif
 
-struct dma_request 
+void fiq_handler(void) __attribute__((interrupt ("FIQ")));
+
+void pcm_play_lock(void)
 {
-    volatile void *source_addr;
-    volatile void *dest_addr;
-    unsigned long count;
-    unsigned long source_control;
-    unsigned long dest_control;
-    unsigned long source_map;
-    unsigned long control;
-    void (*callback)(void);
-};
+}
 
-void dma_init(void);
-void dma_enable_channel(int channel, struct dma_request *request);
+void pcm_play_unlock(void)
+{
+}
 
-inline void dma_disable_channel(int channel);
+void pcm_play_dma_init(void)
+{
+}
 
-void dma_retain(void);
-void dma_release(void);
+void pcm_play_dma_postinit(void)
+{
+}
 
-#endif
+void pcm_dma_apply_settings(void)
+{
+}
+
+void pcm_play_dma_start(const void *addr, size_t size)
+{
+    (void) addr;
+    (void) size;
+}
+
+void pcm_play_dma_stop(void)
+{
+}
+
+void pcm_play_dma_pause(bool pause)
+{
+    (void) pause;
+}
+
+void fiq_handler(void)
+{
+}
+
+size_t pcm_get_bytes_waiting(void)
+{
+    return 0;
+}
+
+const void *pcm_play_dma_get_peak_buffer(int *count)
+{
+    (void) count;
+    return NULL;
+}

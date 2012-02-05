@@ -143,6 +143,17 @@
 #define EINT1_MASK     (1 <<  1) /* REQ2 */
 #define EINT0_MASK     (1 <<  0) /* REQ1 */
 
+/* Sub Interrupt bitmaks: SUBSRCPND, INTSUBMSK */
+#define RXD0_SUBMASK    (1 << 0)
+#define TXD0_SUBMASK    (1 << 1)
+#define ERR0_SUBMASK    (1 << 2)
+#define RXD1_SUBMASK    (1 << 3)
+#define TXD1_SUBMASK    (1 << 4)
+#define ERR1_SUBMASK    (1 << 5)
+#define RXD2_SUBMASK    (1 << 6)
+#define TXD2_SUBMASK    (1 << 7)
+#define ERR2_SUBMASK    (1 << 8)
+
 /* DMA */
 
 #define DISRC0 (*(volatile unsigned long *)0x4B000000) /* DMA 0 initial source */
@@ -262,6 +273,27 @@
 #define CLKDIVN (*(volatile unsigned long *)0x4C000014) /* Clock divider control */
 #define CAMDIVN (*(volatile unsigned long *)0x4C000018) /* Camera clock divider control */
 
+/* CLKCON */
+#define CLKCON_IDLE     (1 << 2)
+#define CLKCON_SLEEP    (1 << 3)
+#define CLKCON_NAND     (1 << 4)
+#define CLKCON_LCDC     (1 << 5)
+#define CLKCON_USBH     (1 << 6)
+#define CLKCON_USBD     (1 << 7)
+#define CLKCON_PWM      (1 << 8)
+#define CLKCON_SDI      (1 << 9)
+#define CLKCON_UART0    (1 << 10)
+#define CLKCON_UART1    (1 << 11)
+#define CLKCON_UART2    (1 << 12)
+#define CLKCON_GPIO     (1 << 13)
+#define CLKCON_RTC      (1 << 14)
+#define CLKCON_ADC      (1 << 15)
+#define CLKCON_I2C      (1 << 16)
+#define CLKCON_I2S      (1 << 17)
+#define CLKCON_SPI      (1 << 18)
+#define CLKCON_CAM      (1 << 19)
+#define CLKCON_AC97     (1 << 20)
+
 /* LCD Controller */
 
 #define LCDCON1 (*(volatile unsigned long *)0x4D000000) /* LCD control 1 */
@@ -375,6 +407,18 @@
 #define URXH2 (*(volatile unsigned char*)0x50008024) /* UART 2 receive buffer */
 #define UBRDIV2 (*(volatile unsigned long *)0x50008028) /* UART 2 baud rate divisor */
 
+#define ULCON(x) (*(volatile unsigned long *)(0x50000000 + (x) * 0x4000)) /* UART x line control */
+#define UCON(x) (*(volatile unsigned long *)(0x50000004 + (x) * 0x4000)) /* UART x control */
+#define UFCON(x) (*(volatile unsigned long *)(0x50000008 + (x) * 0x4000)) /* UART x FIFO control */
+#define UMCON(x) (*(volatile unsigned long *)(0x5000000C + (x) * 0x4000)) /* UART x modem control */
+#define UTRSTAT(x) (*(volatile unsigned long *)(0x50000010 + (x) * 0x4000)) /* UART x Tx/Rx status */
+#define UERSTAT(x) (*(volatile unsigned long *)(0x50000014 + (x) * 0x4000)) /* UART x Rx error status */
+#define UFSTAT(x) (*(volatile unsigned long *)(0x50000018 + (x) * 0x4000)) /* UART x FIFO status */
+#define UMSTAT(x) (*(volatile unsigned long *)(0x5000001C + (x) * 0x4000)) /* UART x modem status */
+#define UTXH(x) (*(volatile unsigned char *)(0x50000020 + (x) * 0x4000)) /* UART x transmission hold */
+#define URXH(x) (*(volatile unsigned char *)(0x50000024 + (x) * 0x4000)) /* UART x receive buffer */
+#define UBRDIV(x) (*(volatile unsigned long *)(0x50000028 + (x) * 0x4000)) /* UART x baud rate divisor */
+
 /* PWM Timer */
 
 #define TCFG0 (*(volatile unsigned long *)0x51000000) /* Timer configuration */
@@ -419,6 +463,7 @@
 #define EP2_FIFO (*(volatile unsigned char *)0x520001C8) /* Endpoint 2 FIFO */
 #define EP3_FIFO (*(volatile unsigned char *)0x520001CC) /* Endpoint 3 FIFO */
 #define EP4_FIFO (*(volatile unsigned char *)0x520001D0) /* Endpoint 4 FIFO */
+#define EPx_FIFO(ep) (*(volatile unsigned char *)(0x520001C0 + 4 * ep)) /* Endpoint x FIFO */
 #define EP1_DMA_CON (*(volatile unsigned char *)0x52000200) /* EP1 DMA Interface control */
 #define EP1_DMA_UNIT (*(volatile unsigned char *)0x52000204) /* EP1 DMA Tx unit counter */
 #define EP1_DMA_FIFO (*(volatile unsigned char *)0x52000208) /* EP1 DMA Tx FIFO counter */
@@ -443,6 +488,54 @@
 #define EP4_DMA_TTC_L (*(volatile unsigned char *)0x52000264) /* EP4 DMA Total Tx counter */
 #define EP4_DMA_TTC_M (*(volatile unsigned char *)0x52000268) /* EP4 DMA Total Tx counter */
 #define EP4_DMA_TTC_H (*(volatile unsigned char *)0x5200026C) /* EP4 DMA Total Tx counter */
+
+/* EP_INT_REG / EP_INT_EN_REG  */
+#define EPx_INTERRUPT(i)   (1 << (i))
+
+/* USB_INT_REG / USB_INT_EN_REG */
+#define SUSPEND_INT     1
+#define RESUME_INT      2
+#define RESET_INT       4
+
+/* USB_MAXP_REG  */
+#define EPx_MAXP(size)  ((size) >>3)
+
+/* EP0_CSR */
+#define OUT_PKT_RDY     1
+#define IN_PKT_RDY      2
+#define SENT_STALL      4
+#define DATA_END        8
+#define SETUP_END       16
+#define SEND_STALL      32
+#define SRV_OUT_PKT_RDY 64
+#define SRV_SETUP_END  128
+
+/* IN_CSR1_REG */
+#define IN_PKT_RDY_EPx  1
+#define IN_FIFO_FLUSH   (1 << 3)
+#define SENT_STALL_IN   (1 << 5)
+#define SEND_STALL_IN   (1 << 4)
+
+/* IN_CSR2_REG */
+#define MODE_IN         (1 << 5)
+#define IN_DMA_INT_EN   (1 << 4)
+
+/* OUT_CSR1_REG */
+#define OUT_FIFO_FLUSH  (1 << 4)
+#define SENT_STALL_OUT  (1 << 6)
+#define SEND_STALL_OUT  (1 << 5)
+
+/* OUT_CSR2_REG */
+#define AUTO_CLR        (1 << 7)
+#define OUT_DMA_INT_MASK    (1 << 5)
+
+/* Epx_DMA_CON */
+#define DMA_MODE_EN     (1 << 0)
+#define IN_DMA_RUN      (1 << 1)
+#define OUT_DMA_RUN     (1 << 2)
+
+/* FUNC_ADDR */
+#define ADDR_UPDATE     (1 << 7)
 
 /* Watchdog Timer */
 
@@ -623,7 +716,7 @@
 #define S3C2410_SDICON_SDIOIRQ        (1<<3)
 #define S3C2410_SDICON_RWAITEN        (1<<2)
 #define S3C2410_SDICON_FIFORESET      (1<<1)
-#define S3C2410_SDICON_CLOCKTYPE      (1<<0)
+#define S3C2410_SDICON_CLOCKEN        (1<<0)
 
 #define S3C2410_SDICMDCON_ABORT       (1<<12)
 #define S3C2410_SDICMDCON_WITHDATA    (1<<11)
@@ -751,7 +844,10 @@
 #define GPIO_PULLUP_ENABLE  0
 
 #define S3C2440_GPIO_CONFIG(port,pin,function)  port = ( (port & ~(3<<(pin*2)) ) | (function<<(pin*2)) )
-#define S3C2440_GPIO_PULLUP(port,pin,state)     port = ( (port & ~(1<<pin    ) ) | (state<<pin       ) ) 
+#define S3C2440_GPIO_PULLUP(port,pin,state)     port = ( (port & ~(1<<pin    ) ) | (state<<pin       ) )
+
+#define USB_NUM_ENDPOINTS   5
+#define USB_DEVBSS_ATTR     NOCACHEBSS_ATTR
 
 
 #endif /* __S3C2440_H__ */

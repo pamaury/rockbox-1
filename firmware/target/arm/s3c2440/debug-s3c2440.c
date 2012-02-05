@@ -32,6 +32,8 @@
 #define DEBUG_CANCEL  BUTTON_POWER
 #elif defined(MINI2440)
 #define DEBUG_CANCEL  BUTTON_MENU
+#elif defined(MIO_C510)
+#define DEBUG_CANCEL  BUTTON_MENU
 #endif
 
 bool dbg_hw_info(void)

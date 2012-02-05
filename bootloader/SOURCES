@@ -70,6 +70,8 @@ mpio_hd200_hd300.c
 #elif defined(RK27_GENERIC) || defined(HM60X) || defined(HM801)
 rk27xx.c
 show_logo.c
+#elif defined(MIO_C510)
+mio_c510.c
 #elif defined(SANSA_CONNECT)
 sansaconnect.c
 show_logo.c

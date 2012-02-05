@@ -25,7 +25,7 @@
 #include "kernel.h"
 #include "usb_serial.h"
 #include "usb_class_driver.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 /* serial interface */
@@ -171,9 +171,13 @@ static void sendout(void)
 void usb_serial_send(const unsigned char *data,int length)
 {
     int freestart, available_end_space, i;
+    static bool no_entry = false;
 
     if (!active||length<=0)
         return;
+
+    if(no_entry) return;
+    else no_entry = true;
 
     i=buffer_start+buffer_length+buffer_transitlength;
     freestart=i%BUFFER_SIZE;
@@ -208,6 +212,7 @@ void usb_serial_send(const unsigned char *data,int length)
     if (buffer_transitlength==0)
         sendout();
     /* else do nothing. The transfer completion handler will pick it up */
+    no_entry = false;
 }
 
 /* called by usb_core_transfer_complete() */

@@ -85,6 +85,9 @@ enum {
 #ifdef USB_ENABLE_HID
     USB_DRIVER_HID,
 #endif
+#ifdef USB_ENABLE_UART_SERIAL
+    USB_DRIVER_UART_SERIAL,
+#endif
     USB_NUM_DRIVERS
 };
 

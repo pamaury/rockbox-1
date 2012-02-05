@@ -144,6 +144,7 @@
 #define HM801_PAD          51
 #define SANSA_CONNECT_PAD  52
 #define SAMSUNG_YPR0_PAD   53
+#define MIO_C510_PAD       54
 
 /* CONFIG_REMOTE_KEYPAD */
 #define H100_REMOTE   1
@@ -243,6 +244,7 @@
 #define LCD_CONNECT   45 /* as used by the Sandisk Sansa Connect */
 #define LCD_GIGABEATS 46
 #define LCD_YPR0      47
+#define LCD_MIOC510   48
 
 /* LCD_PIXELFORMAT */
 #define HORIZONTAL_PACKING 1
@@ -327,6 +329,7 @@ Lyre prototype 1 */
 #define USBOTG_JZ4740   4740 /* Ingenic Jz4740/Jz4732 */
 #define USBOTG_AS3525   3525 /* AMS AS3525 */
 #define USBOTG_S3C6400X 6400 /* Samsung S3C6400X, also used in the S5L8701/S5L8702/S5L8720 */
+#define USBOTG_S3C2440  2440
 #define USBOTG_RK27XX   2700 /* Rockchip rk27xx */
 #define USBOTG_TNETV105 105  /* TI TNETV105 */
 
@@ -493,6 +496,8 @@ Lyre prototype 1 */
 #include "config/nokian900.h"
 #elif defined(PANDORA)
 #include "config/pandora.h"
+#elif defined(MIO_C510)
+#include "config/mioc510.h"
 #elif defined(SAMSUNG_YPR0)
 #include "config/samsungypr0.h"
 #else
@@ -826,6 +831,8 @@ Lyre prototype 1 */
 #elif CONFIG_USBOTG == USBOTG_RK27XX
 #define USB_STATUS_BY_EVENT
 #define USB_DETECT_BY_REQUEST
+#elif CONFIG_USBOTG == USBOTG_S3C2440
+#define USB_DETECT_BY_REQUEST
 #endif /* CONFIG_USB == */
 #endif /* HAVE_USBSTACK */
 
@@ -1058,7 +1065,8 @@ Lyre prototype 1 */
 #elif (CONFIG_USBOTG == USBOTG_ARC) || \
     (CONFIG_USBOTG == USBOTG_JZ4740) || \
     (CONFIG_USBOTG == USBOTG_M66591) || \
-    (CONFIG_USBOTG == USBOTG_AS3525)
+    (CONFIG_USBOTG == USBOTG_AS3525) ||  \
+    (CONFIG_USBOTG == USBOTG_S3C2440)
 #define USB_HAS_BULK
 #define USB_HAS_INTERRUPT
 #elif defined(CPU_TCC780X) || defined(CPU_TCC77X)
@@ -1088,14 +1096,15 @@ Lyre prototype 1 */
 
 #if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #ifdef USB_HAS_BULK
-//#define USB_ENABLE_SERIAL
+#define USB_ENABLE_SERIAL
+#define USB_ENABLE_UART_SERIAL
 #ifdef USE_ROCKBOX_USB
-#define USB_ENABLE_STORAGE
+//#define USB_ENABLE_STORAGE
 #endif /* USE_ROCKBOX_USB */
 #endif /* USB_HAS_BULK */
 
 #ifdef USB_HAS_INTERRUPT
-#define USB_ENABLE_HID
+//#define USB_ENABLE_HID
 #else
 #define USB_ENABLE_CHARGING_ONLY
 #endif

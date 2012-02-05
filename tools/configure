@@ -1309,7 +1309,8 @@ cat <<EOF
  203) Nokia N900          ==ROCKCHIP==           ==HiFiMAN==
  204) Pandora             180) rk27xx generic    190) HM-60x
  205) Samsung YP-R0                              191) HM-801
-
+                          ==Mio Digiwalker==
+                          206) Mio C510
 EOF
 
   buildfor=`input`;
@@ -1329,6 +1330,8 @@ fi
   genericbitmaptools="$toolset bmp2rb"
   # scramble is used by all other targets
   scramblebitmaptools="$genericbitmaptools scramble"
+  #
+  mioc510tools="$genericbitmaptools scramble mkwinceboot"
 
 
   #  ---- For each target ----
@@ -3294,6 +3297,28 @@ fi
     t_model="app"
     ;;
 
+   206|mioc510)
+    target_id=80
+    modelname="mioc510"
+    target="MIO_C510"
+    memory=64
+    arm9tdmicc
+    tool="$rootdir/tools/scramble -add=m510"
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
+    output="rockbox.s3c"
+    appextra="recorder:gui:radio"
+    plugins="no"
+    swcodec="no"
+    toolset=$mioc510tools
+    boottool="$rootdir/tools/mkwinceboot $rootdir/tools/wince_binfs_hdr.bin"
+    bootoutput="winceimg.bin"
+    # architecture, manufacturer and model for the target-tree build
+    t_cpu="arm"
+    t_manufacturer="s3c2440"
+    t_model="mio_c510"
+    ;;
+    
    *)
     echo "Please select a supported target platform!"
     exit 7

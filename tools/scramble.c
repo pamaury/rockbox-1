@@ -339,6 +339,8 @@ int main (int argc, char** argv)
             modelnum = 72;
         else if (!strcmp(&argv[1][5], "rk27")) /* rockchip 27xx generic */
             modelnum = 73;
+        else if (!strcmp(&argv[1][5], "m510")) /* Mio C510 */
+            modelnum = 74;
         else if (!strcmp(&argv[1][5], "clzp")) /* Sansa Clip Zip */
             modelnum = 79;
         else if (!strcmp(&argv[1][5], "conn")) /* Sansa Connect */

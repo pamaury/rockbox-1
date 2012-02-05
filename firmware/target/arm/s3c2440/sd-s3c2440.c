@@ -38,7 +38,9 @@
 #endif
 #include "dma-target.h"     
 #include "system-target.h"
+#if defined(MINI2440)
 #include "led-mini2440.h"
+#endif
 
 /* The configuration method is not very flexible. */
 #define CARD_NUM_SLOT   0
@@ -245,7 +247,7 @@ void dma_callback (void)
 static void init_sdi_controller(const int card_no)
 {
     (void)card_no;
-
+    bitset32(&CLKCON, CLKCON_SDI);
 /*****************************************************************************/
 #ifdef MINI2440
     /* Specific to Mini2440 */
@@ -276,6 +278,31 @@ static void init_sdi_controller(const int card_no)
     /* Write Protect input */
     S3C2440_GPIO_CONFIG (GPHCON, 8, GPIO_INPUT);
 /*****************************************************************************/
+#elif defined(MIO_C510)
+    
+    /* Unknown use */
+    //S3C2440_GPIO_PULLUP(GPGCON, 0, GPIO_PULLUP_DISABLE);
+    S3C2440_GPIO_CONFIG(GPGCON, 0, GPIO_OUTPUT);
+    GPGDAT &= ~1;
+    /* Enable pullups on SDCMD and SDDAT pins */
+    //S3C2440_GPIO_PULLUP(GPEUP, 5, GPIO_PULLUP_ENABLE);
+    S3C2440_GPIO_PULLUP(GPEUP, 6, GPIO_PULLUP_ENABLE);
+    S3C2440_GPIO_PULLUP(GPEUP, 7, GPIO_PULLUP_ENABLE);
+    S3C2440_GPIO_PULLUP(GPEUP, 8, GPIO_PULLUP_ENABLE);
+    S3C2440_GPIO_PULLUP(GPEUP, 9, GPIO_PULLUP_ENABLE);
+    S3C2440_GPIO_PULLUP(GPEUP, 10, GPIO_PULLUP_ENABLE);
+    
+    /* Enable special function for SDCMD, SDCLK and SDDAT pins */
+    S3C2440_GPIO_CONFIG(GPECON, 5, GPIO_FUNCTION);
+    S3C2440_GPIO_CONFIG(GPECON, 6, GPIO_FUNCTION);
+    S3C2440_GPIO_CONFIG(GPECON, 7, GPIO_FUNCTION);
+    S3C2440_GPIO_CONFIG(GPECON, 8, GPIO_FUNCTION);
+    S3C2440_GPIO_CONFIG(GPECON, 9, GPIO_FUNCTION);
+    S3C2440_GPIO_CONFIG(GPECON, 10, GPIO_FUNCTION);
+    /* Write protect */
+    S3C2440_GPIO_PULLUP(GPFUP, 6, GPIO_PULLUP_ENABLE);
+    S3C2440_GPIO_CONFIG(GPFCON, 6, GPIO_INPUT);
+/*****************************************************************************/
 #else
 #error Unsupported target
 #endif
@@ -284,7 +311,7 @@ static void init_sdi_controller(const int card_no)
     /* About 400KHz for initial comms with card */
     SDIPRE   = PCLK / INITIAL_CLK - 1;
     /* Byte order=Type A (Little Endian), clock enable */
-    SDICON   = S3C2410_SDICON_CLOCKTYPE;       
+    SDICON   = S3C2410_SDICON_CLOCKEN;       
     SDIFSTA  |= S3C2440_SDIFSTA_FIFORESET;
     SDIBSIZE = SD_BLOCK_SIZE;
     SDIDTIMER= 0x7fffff;      /* Set timeout count - max value */
@@ -315,11 +342,14 @@ static bool send_cmd(const int card_no, const int cmd, const int arg,
     unsigned val, status;
     (void)card_no;
 
+    static int cnt = 0;
+    lcd_putsf(0, (cnt++ % 10), "send_cmd: %x %x %x", cmd, arg, flags);
+    lcd_update();
+
 #ifdef SD_DEBUG
     get_regs (reg_copy);
 #endif
     /* A major bodge. For some reason a delay is required here */
-    mci_delay();
     dbgprintf ("send_cmd: c=%3.3d a=%08x f=%02x  \n", cmd, arg, flags);
 
 #ifdef SD_DEBUG
@@ -399,8 +429,6 @@ static bool send_cmd(const int card_no, const int cmd, const int arg,
     
     /* Clear Command status flags */
     SDICSTA |= 0x0f << 9;
-    
-    mci_delay();
     
     return ret;
 }
@@ -502,7 +530,7 @@ static inline bool card_detect_target(void)
 #ifdef MINI2440
     return (GPGDAT & SD_CD) == 0;
 #else
-#error Unsupported target
+    return (GPFDAT & (1 << 7)) == 0;
 #endif
 }
 
@@ -525,6 +553,7 @@ static int sd1_oneshot_callback(struct timeout *tmo)
     return 0;
 }
 
+#ifdef MINI2440
 void EINT8_23(void)
 {
     static struct timeout sd1_oneshot;
@@ -535,6 +564,20 @@ void EINT8_23(void)
      * sanity check if it's still inserted after 300ms  */
     timeout_register(&sd1_oneshot, sd1_oneshot_callback, (3*HZ/10), 0);
 }
+#elif defined(MIO_C510)
+void EINT4_7(void)
+{
+    static struct timeout sd1_oneshot;
+    EINTPEND = 1 << 7; /* ack irq on external, then internal irq controller */
+    SRCPND = 1 << 4;
+    INTPND = 1 << 4;
+    /* add task to inform the system about the SD insertion
+     * sanity check if it's still inserted after 300ms  */
+    timeout_register(&sd1_oneshot, sd1_oneshot_callback, (3*HZ/10), 0);
+}
+#else
+#error Unsupported targezt
+#endif
 
 bool sd_removable(IF_MD_NONVOID(int card_no))
 {
@@ -669,7 +712,6 @@ static int sd_transfer_sectors(int card_no, unsigned long start,
 
     mutex_lock(&sd_mtx);
     sd_enable(true);
-    set_leds(SD_ACTIVE_LED);
 
 #ifdef HAVE_MULTIDRIVE
     curr_card = card_no;
@@ -677,6 +719,14 @@ static int sd_transfer_sectors(int card_no, unsigned long start,
     if (card_info[card_no].initialized <= 0)
     {
         ret = sd_init_card(card_no);
+        if(ret < 0)
+        {
+            lcd_clear_display();
+            lcd_putsf(0, 0, "sd init error: %d", ret);
+            lcd_update();
+            while(!(button_read_device() & 1))
+                sleep(HZ / 10);
+        }
         if (!(card_info[card_no].initialized))
             goto sd_transfer_error;
     }
@@ -808,7 +858,6 @@ static int sd_transfer_sectors(int card_no, unsigned long start,
                 
             if(loops++ > MAX_TRANSFER_ERRORS)
             {
-                led_flash(LED1|LED2, LED3|LED4);
                 /* panicf("SD transfer error : 0x%x", transfer_error[card_no]); */
             }
         }
@@ -837,7 +886,6 @@ sd_transfer_error:
 
     dma_release();
 
-    clear_leds(SD_ACTIVE_LED);
     sd_enable(false);
 
     if (ret)    /* error */
@@ -857,12 +905,7 @@ int sd_read_sectors(IF_MD2(int card_no,) unsigned long start, int incount,
 #else
     dbgprintf ("sd_read %x %d\n", start, incount);
 #endif
-#ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
-    if (!card_detect_target())
-        ret = 0; /* assume success */
-    else
-#endif
-        ret = sd_transfer_sectors(card_no, start, incount, inbuf, false);
+    ret = sd_transfer_sectors(card_no, start, incount, inbuf, false);
     dbgprintf ("sd_read, ret=%d\n", ret);
     return ret;
 }
@@ -885,12 +928,7 @@ int sd_write_sectors(IF_MD2(int drive,) unsigned long start, int count,
 #else
     dbgprintf ("sd_write %x %d\n", start, count);
 #endif
-#ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
-    if (!card_detect_target())
-        return 0; /* assume success */
-    else
-#endif
-        return sd_transfer_sectors(drive, start, count, (void*)outbuf, true);
+    return sd_transfer_sectors(drive, start, count, (void*)outbuf, true);
 #endif
 }
 /*****************************************************************************/
@@ -933,21 +971,26 @@ int sd_init(void)
 
     uncached_buffer = UNCACHED_ADDR(&aligned_buffer[0]);
 
-#ifdef HAVE_HOTSWAP
+#if defined(HAVE_HOTSWAP) && defined(MINI2440)
     /*
      * prepare detecting of SD insertion (not extraction) */
     unsigned long for_extint = EXTINT2;
     unsigned long for_gpgcon = GPGCON;
     for_extint &= ~0x7;
-#ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
-    for_extint |=  0x2; /* detect falling edge only (0 means SD inserted) */
-#else
     for_extint |=  0x3; /* detect both, raising and falling, edges */
-#endif
     for_gpgcon &= ~(0x3<<16);
     for_gpgcon |=  (0x2<<16); /* enable interrupt on pin 8 */
     EXTINT2 = for_extint;
     GPGCON = for_gpgcon;
+#endif
+
+#if defined(HAVE_HOTSWAP) && defined(MIO_C510)
+    /* Card detect */
+    S3C2440_GPIO_PULLUP(GPFUP, 7, GPIO_PULLUP_DISABLE);
+    S3C2440_GPIO_CONFIG(GPFCON, 7, GPIO_FUNCTION); // EINT[7]
+    EXTINT0 |= 0x70000000;
+    EINTMASK &= ~(1 << 7);
+    INTMSK &= ~(1 << 4);
 #endif
 
     initialized = true;

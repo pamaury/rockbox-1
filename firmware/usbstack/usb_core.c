@@ -22,7 +22,7 @@
 #include "thread.h"
 #include "kernel.h"
 #include "string.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 #include "usb.h"
@@ -37,6 +37,10 @@
 
 #if defined(USB_ENABLE_SERIAL)
 #include "usb_serial.h"
+#endif
+
+#if defined(USB_ENABLE_UART_SERIAL)
+#include "usb_uart_serial.h"
 #endif
 
 #if defined(USB_ENABLE_CHARGING_ONLY)
@@ -62,6 +66,10 @@
 #define USB_MAX_CURRENT 500
 #endif
 
+#ifndef USB_EP0_MAX_PACKET_SIZE
+#define USB_EP0_MAX_PACKET_SIZE 64
+#endif
+
 /*-------------------------------------------------------------------------*/
 /* USB protocol descriptors: */
 
@@ -70,15 +78,11 @@ static struct usb_device_descriptor __attribute__((aligned(2)))
 {
     .bLength            = sizeof(struct usb_device_descriptor),
     .bDescriptorType    = USB_DT_DEVICE,
-#ifndef USB_NO_HIGH_SPEED
     .bcdUSB             = 0x0200,
-#else
-    .bcdUSB             = 0x0110,
-#endif
     .bDeviceClass       = USB_CLASS_PER_INTERFACE,
     .bDeviceSubClass    = 0,
     .bDeviceProtocol    = 0,
-    .bMaxPacketSize0    = 64,
+    .bMaxPacketSize0    = USB_EP0_MAX_PACKET_SIZE,
     .idVendor           = USB_VENDOR_ID,
     .idProduct          = USB_PRODUCT_ID,
     .bcdDevice          = 0x0100,
@@ -110,7 +114,7 @@ static const struct usb_qualifier_descriptor __attribute__((aligned(2)))
     .bDeviceClass       = 0,
     .bDeviceSubClass    = 0,
     .bDeviceProtocol    = 0,
-    .bMaxPacketSize0    = 64,
+    .bMaxPacketSize0    = USB_EP0_MAX_PACKET_SIZE,
     .bNumConfigurations = 1
 };
 
@@ -267,6 +271,25 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
         .disconnect = usb_hid_disconnect,
         .transfer_complete = usb_hid_transfer_complete,
         .control_request = usb_hid_control_request,
+#ifdef HAVE_HOTSWAP
+        .notify_hotswap = NULL,
+#endif
+    },
+#endif
+#ifdef USB_ENABLE_UART_SERIAL
+    [USB_DRIVER_UART_SERIAL] = {
+        .enabled = false,
+        .needs_exclusive_storage = false,
+        .first_interface = 0,
+        .last_interface = 0,
+        .request_endpoints = usb_uart_serial_request_endpoints,
+        .set_first_interface = usb_uart_serial_set_first_interface,
+        .get_config_descriptor = usb_uart_serial_get_config_descriptor,
+        .init_connection = usb_uart_serial_init_connection,
+        .init = usb_uart_serial_init,
+        .disconnect = usb_uart_serial_disconnect,
+        .transfer_complete = usb_uart_serial_transfer_complete,
+        .control_request = usb_uart_serial_control_request,
 #ifdef HAVE_HOTSWAP
         .notify_hotswap = NULL,
 #endif
@@ -624,6 +647,17 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
             break;
     }
 
+#ifdef USB_NO_HIGH_SPEED
+    /* a FS device must not respond to these, otherwise the OS will
+     * think it's a HS dev not running at top speed */
+    if((req->wValue >> 8) == USB_DT_DEVICE_QUALIFIER ||
+            (req->wValue >> 8) == USB_DT_OTHER_SPEED_CONFIG)
+    {
+        ptr = NULL;
+        usb_drv_stall(EP_CONTROL, true, true);
+    }
+#endif
+
     if(ptr) {
         logf("data %d (%d)", size, length);
         length = MIN(size, length);
@@ -651,6 +685,7 @@ static void request_handler_device(struct usb_ctrlrequest* req)
         case USB_REQ_SET_CONFIGURATION: {
                 logf("usb_core: SET_CONFIG");
                 usb_drv_cancel_all_transfers();
+                usb_drv_send(EP_CONTROL, NULL, 0);
                 if(req->wValue) {
                     usb_state = CONFIGURED;
                     for(i = 0; i < USB_NUM_DRIVERS; i++)
@@ -659,7 +694,6 @@ static void request_handler_device(struct usb_ctrlrequest* req)
                 }
                 else
                     usb_state = ADDRESS;
-                usb_drv_send(EP_CONTROL, NULL, 0);
 #ifdef HAVE_USB_CHARGING_ENABLE
                 usb_charging_maxcurrent_change(usb_charging_maxcurrent());
 #endif
@@ -828,6 +862,7 @@ static void usb_core_control_request_handler(struct usb_ctrlrequest* req)
     }
 #endif
     if(usb_state == DEFAULT) {
+        logf("allocate intf");
         set_serial_descriptor();
         usb_core_set_serial_function_id();
 
