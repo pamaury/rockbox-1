@@ -7,19 +7,25 @@
 # $Id$
 #
 
-TOOLSCFLAGS := -O -g -W -Wall -Wshadow -pedantic -I$(ROOTDIR)/tools
+TOOLSCFLAGS := -O -g -W -Wall -Wshadow -std=c99 -I$(ROOTDIR)/tools
 
 $(TOOLSDIR)/scramble: $(TOOLSDIR)/scramble.c $(TOOLSDIR)/iriver.c \
 		$(TOOLSDIR)/mi4.c $(TOOLSDIR)/gigabeat.c \
 		$(TOOLSDIR)/gigabeats.c $(TOOLSDIR)/telechips.c \
 		$(TOOLSDIR)/iaudio_bl_flash.c \
 		$(TOOLSDIR)/creative.c $(TOOLSDIR)/hmac-sha1.c
+$(TOOLSDIR)/dualboot_scramble: $(TOOLSDIR)/dualboot_scramble.c \
+    $(TOOLSDIR)/dualboot/dualboot.c \
+    $(TOOLSDIR)/rockpack.c
 $(TOOLSDIR)/rdf2binary:	$(TOOLSDIR)/rdf2binary.c
 $(TOOLSDIR)/convbdf: $(TOOLSDIR)/convbdf.c
 $(TOOLSDIR)/codepages: $(TOOLSDIR)/codepages.c $(TOOLSDIR)/codepage_tables.c
 $(TOOLSDIR)/mkboot: $(TOOLSDIR)/mkboot.c
 $(TOOLSDIR)/wavtrim: $(TOOLSDIR)/wavtrim.c
 $(TOOLSDIR)/voicefont: $(TOOLSDIR)/voicefont.c
+
+$(TOOLSDIR)/dualboot/dualboot.c $(TOOLSDIR)/dualboot/dualboot.h:
+	$(SILENT)$(MAKE) -C $(TOOLSDIR)/dualboot
 
 $(TOOLSDIR)/iaudio_bl_flash.c $(TOOLSDIR)/iaudio_bl_flash.h: $(TOOLSDIR)/iaudio_bl_flash.bmp $(TOOLSDIR)/bmp2rb
 	$(call PRINTS,BMP2RB $(@F))

@@ -103,26 +103,38 @@ execution to the uncompressed firmware.
 
 #include "md5.h"
 
-/* Header for ARM code binaries */
-#include "dualboot.h"
+#include "rockpack.h"
 
 /* Win32 compatibility */
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
 
+static struct ams_rockpack_t ams_dualboot_nrv2e_d8_bootloader_pack =
+{
+    3,
+    {
+        /* nrv2e_d8 code */
+        { "nrv2e_d8.code", -1 },
+        /* Dual boot code */
+        { "dualboot.code", -1 },
+        /* Bootloader code */
+        { "bootloader.code", -1 },
+    }
+};
+
 /* fw_revision: version 2 is used in Clipv2, Clip+ and Fuzev2 firmwares */
 /* hw_revision: 4 for m200, 2 for e200/c200, 1 or 2 for fuze/clip, 1 for clip+ */
 const struct ams_models ams_identity[] = {
-    [MODEL_C200V2]  = { 2, 1, "c200",  dualboot_c200v2,   sizeof(dualboot_c200v2),   "c2v2", 44 },
-    [MODEL_CLIPPLUS]= { 1, 2, "Clip+", dualboot_clipplus, sizeof(dualboot_clipplus), "cli+", 66 },
-    [MODEL_CLIPV2]  = { 2, 2, "Clip",  dualboot_clipv2,   sizeof(dualboot_clipv2),   "clv2", 60 },
-    [MODEL_CLIP]    = { 1, 1, "Clip",  dualboot_clip,     sizeof(dualboot_clip),     "clip", 40 },
-    [MODEL_E200V2]  = { 2, 1, "e200",  dualboot_e200v2,   sizeof(dualboot_e200v2),   "e2v2", 41 },
-    [MODEL_FUZEV2]  = { 2, 2, "Fuze",  dualboot_fuzev2,   sizeof(dualboot_fuzev2),   "fuz2", 68 },
-    [MODEL_FUZE]    = { 1, 1, "Fuze",  dualboot_fuze,     sizeof(dualboot_fuze),     "fuze", 43 },
-    [MODEL_M200V4]  = { 4, 1, "m200",  dualboot_m200v4,   sizeof(dualboot_m200v4),   "m2v4", 42 },
-    [MODEL_CLIPZIP] = { 1, 2, "ClipZip", dualboot_clipzip, sizeof(dualboot_clipzip), "clzp", 79 },
+    [MODEL_C200V2]  = { 2, 1, "c200",    "c200v2",   &ams_dualboot_nrv2e_d8_bootloader_pack },
+    [MODEL_CLIPPLUS]= { 1, 2, "Clip+",   "clipplus", &ams_dualboot_nrv2e_d8_bootloader_pack },
+    [MODEL_CLIPV2]  = { 2, 2, "Clip",    "clipv2",   &ams_dualboot_nrv2e_d8_bootloader_pack },
+    [MODEL_CLIP]    = { 1, 1, "Clip",    "clip",     &ams_dualboot_nrv2e_d8_bootloader_pack },
+    [MODEL_E200V2]  = { 2, 1, "e200",    "e200v2",   &ams_dualboot_nrv2e_d8_bootloader_pack },
+    [MODEL_FUZEV2]  = { 2, 2, "Fuze",    "fuzev2",   &ams_dualboot_nrv2e_d8_bootloader_pack },
+    [MODEL_FUZE]    = { 1, 1, "Fuze",    "fuze",     &ams_dualboot_nrv2e_d8_bootloader_pack },
+    [MODEL_M200V4]  = { 4, 1, "m200",    "m200v4",   &ams_dualboot_nrv2e_d8_bootloader_pack },
+    [MODEL_CLIPZIP] = { 1, 2, "ClipZip", "clipzip",  &ams_dualboot_nrv2e_d8_bootloader_pack },
 };
 
 

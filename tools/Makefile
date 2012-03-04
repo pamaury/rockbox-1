@@ -12,10 +12,11 @@ LDFLAGS := -g
 
 CLEANALL := scramble descramble iriver sh2d bmp2rb rdf2binary convbdf \
     generate_rocklatin mkboot ipod_fw codepages uclpack mi4 gigabeat lngdump \
-    telechips gigabeats creative hmac-sha1 rbspeexenc mkzenboot mk500boot convttf
+    telechips gigabeats creative hmac-sha1 rbspeexenc mkzenboot mk500boot convttf \
+    rbpack dualboot_scramble
 
 all: scramble descramble sh2d rdf2binary mkboot mkzenboot convbdf codepages \
-	uclpack rbspeexenc voicefont mk500boot
+	uclpack rbspeexenc voicefont mk500boot rbpack dualboot_scramble
 
 scramble: scramble.o iriver.o mi4.o gigabeat.o gigabeats.o telechips.o \
 	iaudio_bl_flash.o creative.o hmac-sha1.o
@@ -34,6 +35,9 @@ telechips.o: telechips.c telechips.h
 iaudio_bl_flash.o: iaudio_bl_flash.c iaudio_bl_flash.h
 iaudio_bl_flash.c iaudio_bl_flash.h: iaudio_bl_flash.bmp bmp2rb
 	$(SILENT)./bmp2rb -f 7 -h . $< >iaudio_bl_flash.c
+
+dualboot/dualboot.c dualboot/dualboot.h:
+	$(SILENT)$(MAKE) -C dualboot
 
 sh2d: sh2d.c
 
@@ -96,6 +100,12 @@ voicefont: voicefont.c
 usb_benchmark: usb_benchmark.c
 	$(SILENT)$(CC) $(CFLAGS) -lusb $+ -o $@
 
+rbpack: rbpack.c rockpack.c
+	$(SILENT)$(CC) -O2 -Wall -std=c99 $+ -o $@
+
+dualboot_scramble: dualboot_scramble.c rockpack.c dualboot/dualboot.c
+	$(SILENT)$(CC) -O2 -Wall -std=c99 -o $@ $^
+
 convttf: convttf.c
 	$(call PRINTS,CC $(@F))
 	$(SILENT)$(CC) $(CFLAGS) -lm -std=c99 -O2 -Wall -g $+ -o $@ \
@@ -107,4 +117,5 @@ clean:
 	    echo $$f.exe $$f.o $$f.obj ; done) *.ajf *~
 	$(SILENT)$(MAKE) -C ucl clean
 	$(SILENT)$(MAKE) -C rbspeex clean
+	$(SILENT)$(MAKE) -C dualboot clean
 

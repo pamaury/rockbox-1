@@ -23,7 +23,7 @@
 #include <stdarg.h>
 #include "mkimxboot.h"
 #include "sb.h"
-#include "dualboot.h"
+#include "rockpack.h"
 #include "md5.h"
 
 /* Supported models */
@@ -42,28 +42,34 @@ struct imx_md5sum_t
     char *md5sum;
 };
 
+struct imx_rockpack_entry_t
+{
+    /* Entry name */
+    const char *name;
+    /* Size (-1 if no constraint) */
+    int size;
+};
+
+struct imx_rockpack_t
+{
+    /* Number of entries */
+    int nr_entries;
+    /* Entries */
+    struct imx_rockpack_entry_t entries[];
+};
+
 struct imx_model_desc_t
 {
     /* Descriptive name of this model */
     const char *model_name;
-    /* Dualboot code for this model */
-    const unsigned char *dualboot;
-    /* Size of dualboot functions for this model */
-    int dualboot_size;
-    /* Model name used in the Rockbox header in ".sansa" files - these match the
-       -add parameter to the "scramble" tool */
-    const char *rb_model_name;
-    /* Model number used to initialise the checksum in the Rockbox header in
-       ".sansa" files - these are the same as MODEL_NUMBER in config-target.h */
-    const int rb_model_num;
+    /* Target name (as used in rockpack) */
+    const char *target_name;
     /* Number of keys needed to decrypt/encrypt */
     int nr_keys;
     /* Array of keys */
     struct crypto_key_t *keys;
-    /* Dualboot load address */
-    uint32_t dualboot_addr;
-    /* Bootloader load address */
-    uint32_t bootloader_addr;
+    /* Rockpack safety checks */
+    struct imx_rockpack_t *rockpack_desc;
 };
 
 static const struct imx_md5sum_t imx_sums[] =
@@ -77,10 +83,24 @@ static struct crypto_key_t zero_key =
     .u.key = {0}
 };
 
+static struct imx_rockpack_t imx_dualboot_bootloader_pack =
+{
+    4,
+    {
+        /* Dualboot loading address (32-bit) */
+        { "dualboot.addr", 4 },
+        /* Dualboot code */
+        { "dualboot.code", -1 },
+        /* Bootloader loading address (32-bit) */
+        { "bootloader.addr", 4 },
+        /* Bootloader code */
+        { "bootloader.code", -1 },
+    }
+};
+
 static const struct imx_model_desc_t imx_models[] =
 {
-    [MODEL_FUZEPLUS]  = { "Fuze+",  dualboot_fuzeplus, sizeof(dualboot_fuzeplus), "fuz+", 72,
-                          1, &zero_key, 0, 0x40000000 },
+    [MODEL_FUZEPLUS]  = { "Fuze+", "fuzeplus", 1, &zero_key, &imx_dualboot_bootloader_pack },
 };
 
 #define NR_IMX_SUMS     (sizeof(imx_sums) / sizeof(imx_sums[0]))
@@ -91,8 +111,12 @@ static const struct imx_model_desc_t imx_models[] =
 #define MAGIC_NORMAL    0xcafebabe
 
 static enum imx_error_t patch_std_zero_host_play(int jump_before, int model,
- enum imx_output_type_t type, struct sb_file_t *sb_file, void *boot, size_t boot_sz)
+    enum imx_output_type_t type, struct sb_file_t *sb_file,
+    void *dualboot, size_t dualboot_size, uint32_t dualboot_addr,
+    void *bootloader, size_t bootloader_size, uint32_t bootloader_addr)
 {
+    printf("[INFO] Load %lu bytes dualboot at 0x%08x\n", dualboot_size, dualboot_addr);
+    printf("[INFO] Load %lu bytes bootloader at 0x%08x\n", bootloader_size, bootloader_addr);
     /* We assume the file has three boot sections: ____, host, play and one
      * resource section rsrc.
      *
@@ -135,15 +159,15 @@ static enum imx_error_t patch_std_zero_host_play(int jump_before, int model,
         struct sb_inst_t *load = &new_insts[jump_idx];
         memset(load, 0, sizeof(struct sb_inst_t));
         load->inst = SB_INST_LOAD;
-        load->size = imx_models[model].dualboot_size;
-        load->addr = imx_models[model].dualboot_addr;
+        load->size = dualboot_size;
+        load->addr = dualboot_addr;
         /* duplicate memory because it will be free'd */
-        load->data = memdup(imx_models[model].dualboot, imx_models[model].dualboot_size);
+        load->data = memdup(dualboot, dualboot_size);
         /* second instruction is a call */
         struct sb_inst_t *call = &new_insts[jump_idx + 1];
         memset(call, 0, sizeof(struct sb_inst_t));
         call->inst = SB_INST_CALL;
-        call->addr = imx_models[model].dualboot_addr;
+        call->addr = dualboot_addr;
         call->argument = MAGIC_ROCK;
         /* free old instruction array */
         free(sec->insts);
@@ -160,11 +184,11 @@ static enum imx_error_t patch_std_zero_host_play(int jump_before, int model,
         rock_sec.insts = xmalloc(2 * sizeof(struct sb_inst_t));
         memset(rock_sec.insts, 0, 2 * sizeof(struct sb_inst_t));
         rock_sec.insts[0].inst = SB_INST_LOAD;
-        rock_sec.insts[0].size = boot_sz;
-        rock_sec.insts[0].data = memdup(boot, boot_sz);
-        rock_sec.insts[0].addr = imx_models[model].bootloader_addr;
+        rock_sec.insts[0].size = bootloader_size;
+        rock_sec.insts[0].data = memdup(bootloader, bootloader_size);
+        rock_sec.insts[0].addr = bootloader_addr;
         rock_sec.insts[1].inst = SB_INST_JUMP;
-        rock_sec.insts[1].addr = imx_models[model].bootloader_addr;
+        rock_sec.insts[1].addr = bootloader_addr;
         rock_sec.insts[1].argument = MAGIC_NORMAL;
 
         sb_file->sections = augment_array(sb_file->sections,
@@ -184,11 +208,11 @@ static enum imx_error_t patch_std_zero_host_play(int jump_before, int model,
             sb_free_instruction(sec->insts[i]);
         memset(new_insts + jump_idx, 0, 2 * sizeof(struct sb_inst_t));
         new_insts[jump_idx + 0].inst = SB_INST_LOAD;
-        new_insts[jump_idx + 0].size = boot_sz;
-        new_insts[jump_idx + 0].data = memdup(boot, boot_sz);
-        new_insts[jump_idx + 0].addr = imx_models[model].bootloader_addr;
+        new_insts[jump_idx + 0].size = bootloader_size;
+        new_insts[jump_idx + 0].data = memdup(bootloader, bootloader_size);
+        new_insts[jump_idx + 0].addr = bootloader_addr;
         new_insts[jump_idx + 1].inst = SB_INST_JUMP;
-        new_insts[jump_idx + 1].addr = imx_models[model].bootloader_addr;
+        new_insts[jump_idx + 1].addr = bootloader_addr;
         new_insts[jump_idx + 1].argument = recovery ? MAGIC_RECOVERY : MAGIC_NORMAL;
         
         free(sec->insts);
@@ -213,14 +237,21 @@ static enum imx_error_t patch_std_zero_host_play(int jump_before, int model,
 }
 
 static enum imx_error_t patch_firmware(int model, enum imx_output_type_t type,
-    struct sb_file_t *sb_file, void *boot, size_t boot_sz)
+    struct sb_file_t *sb_file, struct rockpack_pack_t *pack)
 {
+#define rbpk_data(name) rockpack_entry_data(pack, rockpack_search(pack, name))
+#define rbpk_size(name) rockpack_entry_size(pack, rockpack_search(pack, name))
+#define rbpk_uint32(name) *(uint32_t *)rbpk_data(name)
     switch(model)
     {
         case MODEL_FUZEPLUS:
             /* The Fuze+ uses the standard ____, host, play sections, patch after third
              * call in ____ section */
-            return patch_std_zero_host_play(3, model, type, sb_file, boot, boot_sz);
+            return patch_std_zero_host_play(3, model, type, sb_file,
+                rbpk_data("dualboot.code"), rbpk_size("dualboot.code"),
+                rbpk_uint32("dualboot.addr"),
+                rbpk_data("bootloader.code"), rbpk_size("bootloader.code"),
+                rbpk_uint32("bootloader.addr"));
         default:
             return IMX_DONT_KNOW_HOW_TO_PATCH;
     }
@@ -242,11 +273,6 @@ static void imx_printf(void *user, bool error, color_t c, const char *fmt, ...)
     va_end(args);
 }
 
-static uint32_t get_uint32be(unsigned char *p)
-{
-    return (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
-}
-
 enum imx_error_t mkimxboot(const char *infile, const char *bootfile,
     const char *outfile, struct imx_option_t opt)
 {
@@ -256,9 +282,8 @@ enum imx_error_t mkimxboot(const char *infile, const char *bootfile,
         printf("[INFO] mkimxboot models:\n");
         for(int i = 0; i < NR_IMX_MODELS; i++)
         {
-            printf("[INFO]   %s: idx=%d rb_model=%s rb_num=%d\n",
-                imx_models[i].model_name, i, imx_models[i].rb_model_name,
-                imx_models[i].rb_model_num);
+            printf("[INFO]   %s: idx=%d target_name=%s\n",
+                imx_models[i].model_name, i, imx_models[i].target_name);
         }
         printf("[INFO] mkimxboot mapping:\n");
         for(int i = 0; i < NR_IMX_SUMS; i++)
@@ -353,34 +378,57 @@ enum imx_error_t mkimxboot(const char *infile, const char *bootfile,
         }
         fclose(f);
     }while(0);
-    /* Check boot file */
-    do
+    /* load boot file */
+    struct rockpack_pack_t *pack = rockpack_read(boot, boot_size);
+    free(boot);
+    if(rockpack_error(pack))
     {
-        if(boot_size < 8)
+        printf("[ERR] Bootloader is invalid (%s)\n", rockpack_error_msg(pack));
+        return IMX_BOOT_INVALID;
+    }
+    /* check boot file */
+    struct imx_rockpack_t *ref_pack = imx_models[model].rockpack_desc;
+    
+    printf("[INFO] Bootloader rockpack:\n");
+    printf("[INFO] Target = '%s'\n", rockpack_target(pack));
+    for(size_t i = 0; i < rockpack_nr_entries(pack); i++)
+    {
+        printf("[INFO] Entry %u: '%s' (%u bytes)\n", (unsigned)i,
+            rockpack_entry_name(pack, i), (unsigned)rockpack_entry_size(pack, i));
+    }
+    printf("[INFO] Reference rockpack:\n");
+    printf("[INFO] Target = '%s'\n", imx_models[model].target_name);
+    for(int i = 0; i < ref_pack->nr_entries; i++)
+    {
+        printf("[INFO] Entry '%s': ", ref_pack->entries[i].name);
+        if(ref_pack->entries[i].size == -1)
+            printf("no size constraint\n");
+        else
+            printf("exactly %u bytes\n", ref_pack->entries[i].size);
+    }
+
+    if(strcmp(rockpack_target(pack), imx_models[model].target_name) != 0)
+    {
+        printf("[ERR] Bootloader target mismatch\n");
+        return IMX_BOOT_MISMATCH;
+    }
+    for(int i = 0; i < ref_pack->nr_entries; i++)
+    {
+        size_t idx = rockpack_search(pack, ref_pack->entries[i].name);
+        if(rockpack_error(pack))
         {
-            printf("[ERR] Bootloader file is too small to be valid\n");
-            free(boot);
-            return IMX_BOOT_INVALID;
-        }
-        /* check model name */
-        uint8_t *name = boot + 4;
-        if(memcmp(name, imx_models[model].rb_model_name, 4) != 0)
-        {
-            printf("[ERR] Bootloader model doesn't match found model for input file\n");
-            free(boot);
+            printf("[ERR] Bootloader file has no '%s' entry\n",
+                ref_pack->entries[i].name);
             return IMX_BOOT_MISMATCH;
         }
-        /* check checksum */
-        uint32_t sum = imx_models[model].rb_model_num;
-        for(int i = 8; i < boot_size; i++)
-            sum += boot[i];
-        if(sum != get_uint32be(boot))
+        if(ref_pack->entries[i].size != -1 &&
+                rockpack_entry_size(pack, idx) != ref_pack->entries[i].size)
         {
-            printf("[ERR] Bootloader checksum mismatch\n");
-            free(boot);
-            return IMX_BOOT_CHECKSUM_ERROR;
+            printf("[ERR] Bootloader file entry '%s' has wrong size\n",
+                ref_pack->entries[i].name);
+            return IMX_BOOT_MISMATCH;
         }
-    }while(0);
+    }
     /* load OF file */
     struct sb_file_t *sb_file;
     do
@@ -398,12 +446,12 @@ enum imx_error_t mkimxboot(const char *infile, const char *bootfile,
         }
     }while(0);
     /* produce file */
-    enum imx_error_t ret = patch_firmware(model, opt.output, sb_file, boot + 8, boot_size - 8);
+    enum imx_error_t ret = patch_firmware(model, opt.output, sb_file, pack);
     if(ret == IMX_SUCCESS)
         ret = sb_write_file(sb_file, outfile);
 
     clear_keys();
-    free(boot);
     sb_free(sb_file);
+    rockpack_free(pack);
     return ret;
 }

@@ -57,21 +57,32 @@ struct md5sums {
     char *md5;
 };
 
+struct ams_rockpack_entry_t
+{
+    /* Entry name */
+    const char *name;
+    /* Size (-1 if no constraint) */
+    int size;
+};
+
+struct ams_rockpack_t
+{
+    /* Number of entries */
+    int nr_entries;
+    /* Entries */
+    struct imx_rockpack_entry_t entries[];
+};
+
+
 struct ams_models {
     unsigned short hw_revision;
     unsigned short fw_revision;
     /* Descriptive name of this model */
     const char* model_name;
-    /* Dualboot functions for this model */
-    const unsigned char* bootloader;
-    /* Size of dualboot functions for this model */
-    int bootloader_size;
-    /* Model name used in the Rockbox header in ".sansa" files - these match the
-       -add parameter to the "scramble" tool */
-    const char* rb_model_name;
-    /* Model number used to initialise the checksum in the Rockbox header in
-       ".sansa" files - these are the same as MODEL_NUMBER in config-target.h */
-    const int rb_model_num;
+    /* Target name (as used in rockpack) */
+    const char *target_name;
+    /* Rockpack safety checks */
+    struct imx_rockpack_t *rockpack_desc;
 };
 extern const struct ams_models ams_identity[];
 
