@@ -42,7 +42,7 @@
 #include "powermgmt.h"
 #include "partitions-imx233.h"
 #include "adc-imx233.h"
-
+#include "dir.h"
 #include "usb.h"
 
 extern char loadaddress[];
@@ -126,6 +126,93 @@ static void usb_mode(int connect_timeout)
 }
 #endif /* HAVE_BOOTLOADER_USB_MODE */
 
+int do_bootmenu(void)
+{
+    /* Wait until the power button it is released.
+     * This allows to stop boot and read the screen for example.
+     * If the button was hold for 1 second, trigger the boot menu. */
+    bool boot_menu = false;
+    unsigned timeout = current_tick + HZ;
+    while(button_read_device() & BUTTON_POWER)
+        if(TIME_AFTER(current_tick, timeout))
+            boot_menu = true;
+
+    if(!boot_menu)
+        return 0; // boot from first device
+
+#ifdef SANSA_FUZEPLUS
+    unsigned bm_next = BUTTON_VOL_DOWN;
+    const char str_next[] = "Vol-";
+    unsigned bm_prev = BUTTON_VOL_UP;
+    const char str_prev[] = "Vol+";
+    unsigned bm_select = BUTTON_POWER;
+    const char str_select[] = "Power";
+#else
+#error Please define bootmenu keymap!
+#endif
+
+    bool last_next = false;
+    bool last_prev = false;
+    bool last_select = false;
+    int cur_choice = 0;
+    
+    while(1)
+    {
+#define COLOR_BOOTMENU  LCD_RGBPACK(255, 0, 0)
+#define COLOR_ACTION    LCD_RGBPACK(255, 0, 255)
+#define COLOR_BUTTON    LCD_RGBPACK(255, 255, 0)
+        lcd_clear_display();
+        int line = 0;
+        lcd_set_background(LCD_BLACK);
+        lcd_set_foreground(COLOR_BOOTMENU);
+        lcd_putsf(0, line++, "Boot menu");
+        lcd_set_foreground(COLOR_ACTION); lcd_putsf(0, line, "Next  : ");
+        lcd_set_foreground(COLOR_BUTTON); lcd_putsf(8, line++, "%s", str_next);
+        if(bm_prev)
+        {
+            lcd_set_foreground(COLOR_ACTION); lcd_putsf(0, line, "Prev  : ");
+            lcd_set_foreground(COLOR_BUTTON); lcd_putsf(8, line++, "%s", str_prev);
+        }
+        lcd_set_foreground(COLOR_ACTION); lcd_putsf(0, line, "Select: ");
+        lcd_set_foreground(COLOR_BUTTON); lcd_putsf(8, line++, "%s", str_select);
+        
+        for(int i = 0; i < storage_num_drives(); i++)
+        {
+            lcd_set_foreground(LCD_WHITE);
+            lcd_set_background(LCD_BLACK);
+            lcd_putsf(0, line, "%d) ", i);
+            if(cur_choice == i)
+            {
+                lcd_set_foreground(LCD_BLACK);
+                lcd_set_background(LCD_WHITE);
+            }
+            struct storage_info info;
+            storage_get_info(i, &info);
+            bool not_present = storage_removable(i) && !storage_present(i);
+            lcd_putsf(4, line++, "%s %s", info.product, not_present ? "(not present)" : "");
+        }
+        lcd_update();
+        lcd_set_foreground(LCD_WHITE);
+        lcd_set_background(LCD_BLACK);
+
+        unsigned button = button_read_device();
+
+        if(last_next && !(button & bm_next))
+            cur_choice = (cur_choice + 1) % storage_num_drives();
+        if(last_prev && !(button & bm_prev))
+            cur_choice = (cur_choice + storage_num_drives() - 1) % storage_num_drives();
+        if(last_select && !(button & bm_select))
+        {
+            lcd_clear_display();
+            lcd_update();
+            return cur_choice;
+        }
+        last_next = button & bm_next;
+        last_prev = button & bm_prev;
+        last_select = button & bm_select;
+    }
+}
+
 void main(uint32_t arg, uint32_t addr) NORETURN_ATTR;
 void main(uint32_t arg, uint32_t addr)
 {
@@ -162,6 +249,8 @@ void main(uint32_t arg, uint32_t addr)
     if(ret < 0)
         error(EATA, ret, true);
 
+    int boot_dev = do_bootmenu();
+
     /* NOTE: allow disk_init and disk_mount_all to fail since we can do USB after.
      * We need this order to determine the correct logical sector size */
     while(!disk_init(IF_MV(0)))
@@ -173,12 +262,32 @@ void main(uint32_t arg, uint32_t addr)
     if(usb_detect() == USB_INSERTED)
         usb_mode(HZ);
 
-    printf("Loading firmware");
+    char bootfile[128];
+    if(boot_dev == 0)
+        snprintf(bootfile, sizeof(bootfile), "%s", BOOTFILE);
+    else
+    {
+        /* look for a volume on the boot device */
+        int boot_vol = -1;
+        for(int i = 0; i < NUM_VOLUMES; i++)
+            if(volume_get_drive(i) == boot_dev)
+            {
+                boot_vol = i;
+                break;
+            }
+        if(boot_vol == -1)
+        {
+            printf("There is no valid volume on this drive");
+            boot_vol = 0;
+        }
+        snprintf(bootfile, sizeof(bootfile), VOL_NAMES BOOTDIR "/%s", boot_vol, BOOTFILE);
+    }
+    printf("Loading firmware %s", bootfile);
 
     loadbuffer = (unsigned char*)loadaddress;
     buffer_size = (int)(loadaddressend - loadaddress);
 
-    while((ret = load_firmware(loadbuffer, BOOTFILE, buffer_size)) < 0)
+    while((ret = load_firmware(loadbuffer, bootfile, buffer_size)) < 0)
     {
         error(EBOOTFILE, ret, true);
     }
