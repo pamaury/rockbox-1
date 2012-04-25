@@ -73,6 +73,14 @@ int disk_get_sector_multiplier(IF_MD_NONVOID(int drive))
 }
 #endif
 
+int volume_get_drive(IF_MV_NONVOID(int vol))
+{
+#ifndef HAVE_MULTIVOLUME
+    int vol = 0;
+#endif
+    return vol_drive[vol];
+}
+
 struct partinfo* disk_init(IF_MD_NONVOID(int drive))
 {
     int i;
