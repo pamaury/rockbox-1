@@ -3308,8 +3308,8 @@ fi
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.s3c"
     appextra="recorder:gui:radio"
-    plugins="no"
-    swcodec="no"
+    plugins=""
+    swcodec="yes"
     toolset=$mioc510tools
     boottool="$rootdir/tools/mkwinceboot $rootdir/tools/wince_binfs_hdr.bin"
     bootoutput="winceimg.bin"

@@ -28,9 +28,6 @@
 #include "thread.h"
 #include "panic.h"
 
-#ifdef SD_DEBUG
-#include "uart-s3c2440.h"
-#endif
 #ifdef HAVE_HOTSWAP
 #include "sdmmc.h"
 #include "disk.h"
@@ -38,9 +35,6 @@
 #endif
 #include "dma-target.h"     
 #include "system-target.h"
-#if defined(MINI2440)
-#include "led-mini2440.h"
-#endif
 
 /* The configuration method is not very flexible. */
 #define CARD_NUM_SLOT   0
@@ -65,22 +59,14 @@
 #define MAX_TRANSFER_ERRORS     10
 
 /* command flags for send_cmd */
-#define MCI_NO_FLAGS    (0<<0)
+#define MCI_NO_RESP     0
 #define MCI_RESP        (1<<0)
 #define MCI_LONG_RESP   (1<<1)
-#define MCI_ARG         (1<<2)
+#define MCI_ACMD        (1<<2)
 
 #define INITIAL_CLK    400000   /* Initial clock */
 #define SD_CLK       24000000   /* Clock for SD cards */
 #define MMC_CLK      15000000   /* Clock for MMC cards */
-
-#define SD_ACTIVE_LED   LED4
-
-#ifdef SD_DEBUG
-#define dbgprintf uart_printf
-#else
-#define dbgprintf(...)
-#endif
 
 struct sd_card_status
 {
@@ -95,21 +81,11 @@ static long last_disk_activity = -1;
 
 static bool initialized = false;
 static bool sd_enabled = false;
-static long next_yield = 0;
 
 static tCardInfo card_info [NUM_CARDS];
 
 #ifdef HAVE_MULTIDRIVE
 static int curr_card = 0; /* current active card */
-#if 0
-static struct sd_card_status sd_status[NUM_CARDS] =
-{
-#if NUM_CARDS > 1
-    {0, 10},
-#endif
-    {0, 10}
-};
-#endif
 #endif
 
 /* Shoot for around 75% usage */
@@ -124,14 +100,7 @@ static unsigned char    aligned_buffer[UNALIGNED_NUM_SECTORS * SD_BLOCK_SIZE]
                         __attribute__((aligned(32)));
 static unsigned char *  uncached_buffer;
 
-static inline void mci_delay(void) 
-{ 
-    int i = 0xffff; 
-    while (i--)
-        asm volatile ("nop\n");
-}
 
-/* TODO: should be in target include file */
 /*****************************************************************************
     Definitions specific to Mini2440
  *****************************************************************************/
@@ -143,84 +112,16 @@ static inline void mci_delay(void)
     Functions specific to S3C2440 SoC
  *****************************************************************************/
 
-#ifdef SD_DEBUG
-static unsigned reg_copy[16], reg_copy2[16];
-static void get_regs (unsigned *regs)
+void SDI(void)
 {
-    unsigned j;
-    volatile unsigned long *sdi_reg = &SDICON;
-    
-    for (j=0; j < 16;j++)
-    {
-        *regs++ = *sdi_reg++;
-    }
-}
-
-static void dump_regs (unsigned *regs1, unsigned *regs2)
-{
-    unsigned j;
-    volatile unsigned long*sdi_reg = &SDICON;
-    unsigned long diff;
-    
-    for (j=0; j < 16;j++)
-    {
-        diff = *regs1 ^ *regs2;
-        if (diff)
-            dbgprintf ("%8x %8x %8x %8x\n", sdi_reg, *regs1, *regs2, diff );
-        regs1++;
-        regs2++;
-        sdi_reg++;
-    }
-}
-#endif
-
-static void debug_r1(int cmd)
-{
-#if defined(SD_DEBUG)
-    dbgprintf("CMD%2.2d:SDICSTA=%04x [%c%c%c%c%c-%c%c%c%c%c%c%c]  SDIRSP0=%08x [%d %s] \n", 
-        cmd, 
-        SDICSTA, 
-        (SDICSTA & S3C2410_SDICMDSTAT_CRCFAIL)    ? 'C' : ' ', 
-        (SDICSTA & S3C2410_SDICMDSTAT_CMDSENT)    ? 'S' : ' ', 
-        (SDICSTA & S3C2410_SDICMDSTAT_CMDTIMEOUT) ? 'T' : ' ', 
-        (SDICSTA & S3C2410_SDICMDSTAT_RSPFIN)     ? 'R' : ' ', 
-        (SDICSTA & S3C2410_SDICMDSTAT_XFERING)    ? 'X' : ' ', 
-        
-        (SDICSTA & 0x40)    ? 'P' : ' ', 
-        (SDICSTA & 0x20)    ? 'A' : ' ', 
-        (SDICSTA & 0x10)    ? 'E' : ' ', 
-        (SDICSTA & 0x08)    ? 'C' : ' ', 
-        (SDICSTA & 0x04)    ? 'I' : ' ', 
-        (SDICSTA & 0x02)    ? 'R' : ' ', 
-        (SDICSTA & 0x01)    ? 'Z' : ' ', 
-        
-        SDIRSP0,
-        SD_R1_CURRENT_STATE(SDIRSP0),
-        (SDIRSP0 & SD_R1_READY_FOR_DATA) ? "RDY " : "    "
-        );
-#else
-    (void)cmd;
-#endif
-}
-
-void SDI (void)
-{
-    int status = SDIDSTA;
 #ifndef HAVE_MULTIDRIVE
     const int curr_card = 0;
-#endif     
-    
-    transfer_error[curr_card] = status
-#if 0
-        & ( S3C2410_SDIDSTA_CRCFAIL | S3C2410_SDIDSTA_RXCRCFAIL |
-            S3C2410_SDIDSTA_DATATIMEOUT )
 #endif
-        ;
 
-    SDIDSTA |= S3C2410_SDIDSTA_CLEAR_BITS;  /* needed to clear int  */
+    transfer_error[curr_card] = SDIDSTA;
 
-    dbgprintf ("SDI %x\n", transfer_error[curr_card]);
-    
+    SDIDSTA = S3C2410_SDIDSTA_CLEAR_BITS;  /* needed to clear int  */
+
     semaphore_release(&transfer_completion_signal);
 
     /* Ack the interrupt */
@@ -231,18 +132,10 @@ void SDI (void)
 #if 0
 void dma_callback (void)
 {
-    const int status = SDIDSTA;
-    
-    transfer_error[0] = status & (S3C2410_SDIDSTA_CRCFAIL |
-        S3C2410_SDIDSTA_RXCRCFAIL   |
-        S3C2410_SDIDSTA_DATATIMEOUT );
-
-    SDIDSTA |= S3C2410_SDIDSTA_CLEAR_BITS;  /* needed to clear int  */
-    
-    dbgprintf ("dma_cb\n");
     semaphore_release(&transfer_completion_signal);
 }
 #endif
+
 
 static void init_sdi_controller(const int card_no)
 {
@@ -283,7 +176,7 @@ static void init_sdi_controller(const int card_no)
     /* Unknown use */
     //S3C2440_GPIO_PULLUP(GPGCON, 0, GPIO_PULLUP_DISABLE);
     S3C2440_GPIO_CONFIG(GPGCON, 0, GPIO_OUTPUT);
-    GPGDAT &= ~1;
+    bitclr32(&GPGDAT, 1);
     /* Enable pullups on SDCMD and SDDAT pins */
     //S3C2440_GPIO_PULLUP(GPEUP, 5, GPIO_PULLUP_ENABLE);
     S3C2440_GPIO_PULLUP(GPEUP, 6, GPIO_PULLUP_ENABLE);
@@ -311,7 +204,7 @@ static void init_sdi_controller(const int card_no)
     /* About 400KHz for initial comms with card */
     SDIPRE   = PCLK / INITIAL_CLK - 1;
     /* Byte order=Type A (Little Endian), clock enable */
-    SDICON   = S3C2410_SDICON_CLOCKEN;       
+    SDICON   = S3C2410_SDICON_CLOCKEN;
     SDIFSTA  |= S3C2440_SDIFSTA_FIFORESET;
     SDIBSIZE = SD_BLOCK_SIZE;
     SDIDTIMER= 0x7fffff;      /* Set timeout count - max value */
@@ -328,8 +221,8 @@ static void init_sdi_controller(const int card_no)
     
     SDIIMSK |= S3C2410_SDIIMSK_DATAFINISH 
                | S3C2410_SDIIMSK_DATATIMEOUT
-               | S3C2410_SDIIMSK_DATACRC     
-               | S3C2410_SDIIMSK_CRCSTATUS   
+               | S3C2410_SDIIMSK_DATACRC
+               | S3C2410_SDIIMSK_CRCSTATUS 
                | S3C2410_SDIIMSK_FIFOFAIL
                ;
 #endif
@@ -338,159 +231,129 @@ static void init_sdi_controller(const int card_no)
 static bool send_cmd(const int card_no, const int cmd, const int arg,
                      const int flags, long *response)
 {
-    bool ret;
-    unsigned val, status;
-    (void)card_no;
+    if((flags & MCI_ACMD) && !send_cmd(card_no, SD_APP_CMD, card_info[card_no].rca, MCI_RESP, response))
+        return false;
 
-    static int cnt = 0;
-    lcd_putsf(0, (cnt++ % 10), "send_cmd: %x %x %x", cmd, arg, flags);
-    lcd_update();
+    unsigned status;
+    unsigned end_msk;
 
-#ifdef SD_DEBUG
-    get_regs (reg_copy);
-#endif
-    /* A major bodge. For some reason a delay is required here */
-    dbgprintf ("send_cmd: c=%3.3d a=%08x f=%02x  \n", cmd, arg, flags);
-
-#ifdef SD_DEBUG
-    get_regs (reg_copy2);
-    dump_regs (reg_copy, reg_copy2);
-#endif
-    
-#if 0
-    while (SDICSTA & S3C2410_SDICMDSTAT_XFERING)
-        ; /* wait ?? */
-#endif    
     /* set up new command */
-    
-    if (flags & MCI_ARG)
-        SDICARG = arg;
-    else
-        SDICARG = 0;
-    
-    val = cmd | S3C2410_SDICMDCON_CMDSTART | S3C2410_SDICMDCON_SENDERHOST;
+    SDICARG = arg;
+
+    unsigned sdiccon = cmd | S3C2410_SDICMDCON_CMDSTART | S3C2410_SDICMDCON_SENDERHOST;
     if(flags & MCI_RESP)
     {
-        val |= S3C2410_SDICMDCON_WAITRSP;
+        sdiccon |= S3C2410_SDICMDCON_WAITRSP;
         if(flags & MCI_LONG_RESP)
-            val |= S3C2410_SDICMDCON_LONGRSP;
+            sdiccon |= S3C2410_SDICMDCON_LONGRSP;
+        /* wait until timeout or completion */
+        end_msk = S3C2410_SDICMDSTAT_RSPFIN | S3C2410_SDICMDSTAT_CMDTIMEOUT;
     }
-    
+    else
+        /* wait until timeout or command sent */
+        end_msk = S3C2410_SDICMDSTAT_CMDSENT | S3C2410_SDICMDSTAT_CMDTIMEOUT;
+
     /* Clear command/data status flags */
-    SDICSTA |= 0x0f << 9;
-    SDIDSTA |= S3C2410_SDIDSTA_CLEAR_BITS;
-        
+    SDICSTA = S3C2410_SDICMDSTAT_CLEAR_BITS;
+    SDIDSTA = S3C2410_SDIDSTA_CLEAR_BITS;
+
     /* Initiate the command */
-    SDICCON = val;
-             
-    if (flags & MCI_RESP)
+    SDICCON = sdiccon;
+
+    do
     {
-        /* wait for response or timeout */
-        do 
+        status = SDICSTA;
+    }while(!(status & end_msk));
+
+    /* timeout => error */
+    if(status & S3C2410_SDICMDSTAT_CMDTIMEOUT)
+        return false;
+    /* resp received */
+    if((flags & MCI_RESP) && response != NULL)
+    {
+        /* copy resp */
+        if(flags & MCI_LONG_RESP)
         {
-            status = SDICSTA;
-        } while ( (status & (S3C2410_SDICMDSTAT_RSPFIN | 
-                             S3C2410_SDICMDSTAT_CMDTIMEOUT) ) == 0);
-        debug_r1(cmd);
-        if (status & S3C2410_SDICMDSTAT_CMDTIMEOUT)
-            ret = false;
-        else if (status & (S3C2410_SDICMDSTAT_RSPFIN))
-        {   
-            /* resp received */
-            if(flags & MCI_LONG_RESP)
-            {
-                /* store the response in reverse word order */
-                response[0] = SDIRSP3;
-                response[1] = SDIRSP2;
-                response[2] = SDIRSP1;
-                response[3] = SDIRSP0;
-            }
-            else
-                response[0] = SDIRSP0;
-            ret = true;
+            /* store the response in reverse word order */
+            response[0] = SDIRSP3;
+            response[1] = SDIRSP2;
+            response[2] = SDIRSP1;
+            response[3] = SDIRSP0;
         }
         else
-            ret = true;
+            response[0] = SDIRSP0;
     }
-    else 
+    
+    return true;
+}
+
+static int sd_wait_for_state(unsigned int card_no, unsigned int state)
+{
+    unsigned long response;
+    unsigned int timeout = current_tick + 5*HZ;
+    int cmd_retry = 10;
+
+    while(1)
     {
-        /* wait for command completion or timeout */
-        do 
-        {
-            status = SDICSTA;
-        } while ( (status & (S3C2410_SDICMDSTAT_CMDSENT |
-                          S3C2410_SDICMDSTAT_CMDTIMEOUT)) == 0);
-        debug_r1(cmd);
-        if (status & S3C2410_SDICMDSTAT_CMDTIMEOUT)
-            ret = false;
-        else
-            ret = true;
+        while(!send_cmd(card_no, SD_SEND_STATUS, card_info[card_no].rca, MCI_RESP, &response)
+                && cmd_retry > 0)
+            cmd_retry--;
+
+        if(cmd_retry <= 0)
+            return -1;
+
+        if(SD_R1_CURRENT_STATE(response) == state)
+            return 0;
+
+        if(TIME_AFTER(current_tick, timeout))
+            return -100 + SD_R1_CURRENT_STATE(response);
     }
-    
-    /* Clear Command status flags */
-    SDICSTA |= 0x0f << 9;
-    
-    return ret;
 }
 
 static int sd_init_card(const int card_no)
 {
     unsigned long temp_reg[4];
     unsigned long response;
-    long init_timeout;
-    bool sdhc;
     int i;
 
-    if(!send_cmd(card_no, SD_GO_IDLE_STATE, 0, MCI_NO_FLAGS, NULL))
+    if(!send_cmd(card_no, SD_GO_IDLE_STATE, 0, MCI_NO_RESP, NULL))
         return -1;
 
-    mci_delay();
-
-    sdhc = false;
-    if(send_cmd(card_no, SD_SEND_IF_COND, 0x1AA, MCI_RESP|MCI_ARG, &response))
+    card_info[card_no].rca = 0;
+    bool sdhc = false;
+    if(send_cmd(card_no, SD_SEND_IF_COND, 0x1AA, MCI_RESP, &response))
         if((response & 0xFFF) == 0x1AA)
             sdhc = true;
 
     /* timeout for initialization is 1sec, from SD Specification 2.00 */
-    init_timeout = current_tick + HZ;
+    long init_timeout = current_tick + HZ;
 
-    do {
+    do
+    {
         /* timeout */
-        if(current_tick > init_timeout)
+        if(TIME_AFTER(current_tick, init_timeout))
             return -2;
-
-        /* app_cmd */
-        if( !send_cmd(card_no, SD_APP_CMD, 0, MCI_RESP|MCI_ARG, &response) ||
-            !(response & (1<<5)) )
-        {
-            return -3;
-        }
 
         /* acmd41 */
         if(!send_cmd(card_no, SD_APP_OP_COND, (sdhc ? 0x40FF8000 : (1<<23)),
-                        MCI_RESP|MCI_ARG, &card_info[card_no].ocr))
-        {
+                MCI_RESP|MCI_ACMD, &card_info[card_no].ocr))
             return -4;
-        }
-
-    } while(!(card_info[card_no].ocr & (1<<31)));
+    }while(!(card_info[card_no].ocr & (1 << 31)));
 
     /* send CID */
-    if(!send_cmd(card_no, SD_ALL_SEND_CID, 0, MCI_RESP|MCI_LONG_RESP|MCI_ARG,
-                            temp_reg))
+    if(!send_cmd(card_no, SD_ALL_SEND_CID, 0, MCI_RESP|MCI_LONG_RESP, temp_reg))
         return -5;
 
     for(i=0; i<4; i++)
         card_info[card_no].cid[3-i] = temp_reg[i];
 
     /* send RCA */
-    if(!send_cmd(card_no, SD_SEND_RELATIVE_ADDR, 0, MCI_RESP|MCI_ARG,
-                &card_info[card_no].rca))
+    if(!send_cmd(card_no, SD_SEND_RELATIVE_ADDR, 0, MCI_RESP, &card_info[card_no].rca))
         return -6;
 
     /* send CSD */
-    if(!send_cmd(card_no, SD_SEND_CSD, card_info[card_no].rca,
-                 MCI_RESP|MCI_LONG_RESP|MCI_ARG, temp_reg))
+    if(!send_cmd(card_no, SD_SEND_CSD, card_info[card_no].rca, MCI_RESP|MCI_LONG_RESP,
+            temp_reg))
         return -7;
 
     for(i=0; i<4; i++)
@@ -498,24 +361,24 @@ static int sd_init_card(const int card_no)
 
     sd_parse_csd(&card_info[card_no]);
 
-    if(!send_cmd(card_no, SD_SELECT_CARD, card_info[card_no].rca, MCI_ARG, NULL))
+    if(!send_cmd(card_no, SD_SELECT_CARD, card_info[card_no].rca, MCI_RESP, NULL))
         return -9;
-
-    if(!send_cmd(card_no, SD_APP_CMD, card_info[card_no].rca, MCI_ARG, NULL))
+    if(sd_wait_for_state(card_no, SD_TRAN) < 0)
         return -10;
 
-    if(!send_cmd(card_no, SD_SET_BUS_WIDTH, card_info[card_no].rca | 2, MCI_ARG, NULL))
+    if(!send_cmd(card_no, SD_SET_BUS_WIDTH, card_info[card_no].rca | 2, MCI_RESP | MCI_ACMD, NULL))
         return -11;
+    
+    if(!send_cmd(card_no, SD_SET_CLR_CARD_DETECT, 0, MCI_RESP | MCI_ACMD, NULL))
+        return -17;
 
-    if(!send_cmd(card_no, SD_SET_BLOCKLEN, card_info[card_no].blocksize, MCI_ARG,
-                 NULL))
+    if(!send_cmd(card_no, SD_SET_BLOCKLEN, card_info[card_no].blocksize, MCI_NO_RESP, NULL))
         return -12;
 
     card_info[card_no].initialized = 1;
 
     /* full speed for controller clock */
     SDIPRE   = PCLK / SD_CLK - 1;
-    mci_delay();
 
     return EC_OK;
 }
@@ -584,8 +447,7 @@ bool sd_removable(IF_MD_NONVOID(int card_no))
 #ifndef HAVE_MULTIDRIVE
     const int card_no = 0;
 #endif
-    dbgprintf ("sd_remov (hs) [%d] %d\n", card_no, card_no == CARD_NUM_SLOT );
-    return (card_no == CARD_NUM_SLOT);
+    return card_no == CARD_NUM_SLOT;
 }
 
 bool sd_present(IF_MD_NONVOID(int card_no))
@@ -593,7 +455,6 @@ bool sd_present(IF_MD_NONVOID(int card_no))
 #ifdef HAVE_MULTIDRIVE
     (void)card_no;
 #endif
-    dbgprintf ("sd_pres (hs) [%d] %d\n", card_no, card_detect_target());
     return card_detect_target();
 }
 
@@ -607,8 +468,6 @@ bool sd_removable(IF_MD_NONVOID(int card_no))
 #endif
     (void)card_no;
     
-    /* not applicable */
-    dbgprintf ("sd_remov");
     return false;
 }
 
@@ -674,35 +533,6 @@ static void sd_thread(void)
     }
 }
 
-static int sd_wait_for_state(const int card_no, unsigned int state)
-{
-    unsigned long response = 0;
-    unsigned int timeout = HZ; /* ticks */
-    long t = current_tick;
-
-    while (1)
-    {
-        long tick;
-
-        if(!send_cmd(card_no, SD_SEND_STATUS, card_info[card_no].rca,
-                    MCI_RESP|MCI_ARG, &response))
-            return -1;
-
-        if( (SD_R1_CURRENT_STATE(response) == state) )
-            return 0;
-
-        if(TIME_AFTER(current_tick, t + timeout))
-            return -2;
-
-        if (TIME_AFTER((tick = current_tick), next_yield))
-        {
-            yield();
-            timeout += current_tick - tick;
-            next_yield = tick + MIN_YIELD_PERIOD;
-        }
-    }
-}
-
 static int sd_transfer_sectors(int card_no, unsigned long start,
                                int count, void* buf, const bool write)
 {
@@ -719,15 +549,7 @@ static int sd_transfer_sectors(int card_no, unsigned long start,
     if (card_info[card_no].initialized <= 0)
     {
         ret = sd_init_card(card_no);
-        if(ret < 0)
-        {
-            lcd_clear_display();
-            lcd_putsf(0, 0, "sd init error: %d", ret);
-            lcd_update();
-            while(!(button_read_device() & 1))
-                sleep(HZ / 10);
-        }
-        if (!(card_info[card_no].initialized))
+        if(!card_info[card_no].initialized)
             goto sd_transfer_error;
     }
 
@@ -748,8 +570,7 @@ static int sd_transfer_sectors(int card_no, unsigned long start,
          * register, so we have to transfer maximum 127 sectors at a time. */
         unsigned int transfer = (count >= 128) ? 127 : count; /* sectors */
         void *dma_buf;
-        const int cmd =
-            write ? SD_WRITE_MULTIPLE_BLOCK : SD_READ_MULTIPLE_BLOCK;
+        int cmd =  write ? SD_WRITE_MULTIPLE_BLOCK : SD_READ_MULTIPLE_BLOCK;
         unsigned long start_addr = start;
 
         dma_buf = aligned_buffer;
@@ -762,24 +583,23 @@ static int sd_transfer_sectors(int card_no, unsigned long start,
         if(!(card_info[card_no].ocr & SD_OCR_CARD_CAPACITY_STATUS))/* not SDHC */
             start_addr *= SD_BLOCK_SIZE;
 
-        /* TODO? */
-        SDIFSTA = SDIFSTA | S3C2440_SDIFSTA_FIFORESET;
+        bitclr32(&SDIFSTA, S3C2440_SDIFSTA_FIFORESET);
         SDIDCON = S3C2440_SDIDCON_DS_WORD   | 
                   S3C2410_SDIDCON_BLOCKMODE | S3C2410_SDIDCON_WIDEBUS |
                   S3C2410_SDIDCON_DMAEN     |
                   S3C2440_SDIDCON_DATSTART  |  
-                  ( transfer << 0);
-        if (write)
+                  transfer;
+        if(write)
             SDIDCON |= S3C2410_SDIDCON_TXAFTERRESP | S3C2410_SDIDCON_XFER_TXSTART;
         else
             SDIDCON |= S3C2410_SDIDCON_RXAFTERCMD | S3C2410_SDIDCON_XFER_RXSTART;
 
-        SDIDSTA |= S3C2410_SDIDSTA_CLEAR_BITS;  /* needed to clear int  */
+        SDIDSTA = S3C2410_SDIDSTA_CLEAR_BITS;  /* needed to clear int  */
         SRCPND = SDI_MASK;
         INTPND = SDI_MASK;
 
         /* Initiate read/write command */
-        if(!send_cmd(card_no, cmd, start_addr, MCI_ARG | MCI_RESP, NULL))
+        if(!send_cmd(card_no, cmd, start_addr, MCI_RESP, NULL))
         {
             ret -= 3*20;
             goto sd_transfer_error;
@@ -829,21 +649,14 @@ static int sd_transfer_sectors(int card_no, unsigned long start,
                                 (9<<4) /* 2^9 = 512 */ ;
 #endif
 
-        semaphore_wait(&transfer_completion_signal, 100 /*TIMEOUT_BLOCK*/);
+        if(semaphore_wait(&transfer_completion_signal, HZ) == OBJ_WAIT_TIMEDOUT)
+            panicf("cmd timeout");
         
         /* wait for DMA to finish */
-        while (DSTAT0 & DSTAT_STAT_BUSY)
-            ;
-            
-#if 0        
-        status = SDIDSTA;
-        while ((status & (S3C2410_SDIDSTA_DATATIMEOUT|S3C2410_SDIDSTA_XFERFINISH)) == 0)
-        {
-            status = SDIDSTA;
-        }
-        dbgprintf("%x \n", status);
-#endif
-        if( transfer_error[card_no] & S3C2410_SDIDSTA_XFERFINISH )
+        if(DSTAT0 & DSTAT_STAT_BUSY)
+            panicf("dma busy");
+
+        if(transfer_error[card_no] & S3C2410_SDIDSTA_XFERFINISH)
         {
             if(!write)
                 memcpy(buf, uncached_buffer, transfer * SD_BLOCK_SIZE);
@@ -853,14 +666,7 @@ static int sd_transfer_sectors(int card_no, unsigned long start,
             loops = 0;  /* reset errors counter */
         }
         else 
-        {
-            dbgprintf ("SD transfer error : 0x%x\n", transfer_error[card_no]);
-                
-            if(loops++ > MAX_TRANSFER_ERRORS)
-            {
-                /* panicf("SD transfer error : 0x%x", transfer_error[card_no]); */
-            }
-        }
+            panicf("xfer err");
 
         last_disk_activity = current_tick;
 
@@ -888,7 +694,7 @@ sd_transfer_error:
 
     sd_enable(false);
 
-    if (ret)    /* error */
+    if(ret)    /* error */
         card_info[card_no].initialized = 0;
 
     mutex_unlock(&sd_mtx);
@@ -898,46 +704,20 @@ sd_transfer_error:
 int sd_read_sectors(IF_MD2(int card_no,) unsigned long start, int incount,
                      void* inbuf)
 {
-    int ret;
-  
-#ifdef HAVE_MULTIDRIVE
-    dbgprintf ("sd_read %d %x %d\n", card_no, start, incount);
-#else
-    dbgprintf ("sd_read %x %d\n", start, incount);
-#endif
-    ret = sd_transfer_sectors(card_no, start, incount, inbuf, false);
-    dbgprintf ("sd_read, ret=%d\n", ret);
-    return ret;
+    return sd_transfer_sectors(card_no, start, incount, inbuf, false);
 }
 
 /*****************************************************************************/
 int sd_write_sectors(IF_MD2(int drive,) unsigned long start, int count,
                       const void* outbuf)
 {
-#ifdef BOOTLOADER /* we don't need write support in bootloader */
-#ifdef HAVE_MULTIDRIVE
-    (void) drive;
-#endif
-    (void) start;
-    (void) count;
-    (void) outbuf;
-    return -1;
-#else
-#ifdef HAVE_MULTIDRIVE
-    dbgprintf ("sd_write %d %x %d\n", drive, start, count);
-#else
-    dbgprintf ("sd_write %x %d\n", start, count);
-#endif
     return sd_transfer_sectors(drive, start, count, (void*)outbuf, true);
-#endif
 }
 /*****************************************************************************/
 
 void sd_enable(bool on)
 {
-    dbgprintf ("sd_enable %d\n", on);
-    /* TODO: enable/disable SDI clock */
-    
+
     if (sd_enabled == on)
         return; /* nothing to do */
     if (on)
@@ -953,9 +733,6 @@ void sd_enable(bool on)
 int sd_init(void)
 {
     int ret = EC_OK;
-    dbgprintf ("\n==============================\n");
-    dbgprintf ("             sd_init\n");
-    dbgprintf ("==============================\n");
     
     init_sdi_controller (0);
 #ifndef BOOTLOADER
@@ -1012,7 +789,6 @@ tCardInfo *card_get_info_target(int card_no)
 
 int sd_num_drives(int first_drive)
 {
-    dbgprintf ("sd_num_drv");
 #if 0
     /* Store which logical drive number(s) we have been assigned */
     sd_first_drive = first_drive;
