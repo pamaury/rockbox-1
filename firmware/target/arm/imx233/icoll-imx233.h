@@ -65,6 +65,8 @@
 #define INT_SRC_LCDIF_DMA   45
 #define INT_SRC_LCDIF_ERROR 46
 #define INT_SRC_RTC_1MSEC   48
+#define INT_SRC_DRI_DMA     49
+#define INT_SRC_DRI_ATTENTION   50
 #define INT_SRC_DCP         54
 #define INT_SRC_NR_SOURCES  66
 

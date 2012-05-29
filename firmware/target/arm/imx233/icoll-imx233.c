@@ -63,6 +63,8 @@ default_interrupt(INT_ADC_ERROR);
 default_interrupt(INT_DCP);
 default_interrupt(INT_TOUCH_DETECT);
 default_interrupt(INT_RTC_1MSEC);
+default_interrupt(INT_DRI_DMA);
+default_interrupt(INT_DRI_ATTENTION);
 
 void INT_RTC_1MSEC(void);
 
@@ -102,6 +104,8 @@ static isr_t isr_table[INT_SRC_NR_SOURCES] =
     [INT_SRC_DCP] = INT_DCP,
     [INT_SRC_TOUCH_DETECT] = INT_TOUCH_DETECT,
     [INT_SRC_RTC_1MSEC] = INT_RTC_1MSEC,
+    [INT_SRC_DRI_DMA] = INT_DRI_DMA,
+    [INT_SRC_DRI_ATTENTION] = INT_DRI_ATTENTION,
 };
 
 #define IRQ_STORM_DELAY         100 /* ms */

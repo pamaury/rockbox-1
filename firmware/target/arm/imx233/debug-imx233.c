@@ -33,6 +33,7 @@
 #include "dcp-imx233.h"
 #include "pinctrl-imx233.h"
 #include "ocotp-imx233.h"
+#include "dri-imx233.h"
 #include "string.h"
 #include "stdio.h"
 
@@ -48,6 +49,7 @@ static struct
     { "dac", APB_AUDIO_DAC },
     { "ssp1", APB_SSP(1) },
     { "ssp2", APB_SSP(2) },
+    { "dri", APB_DRI },
 };
 
 static struct
@@ -579,18 +581,28 @@ bool dbg_hw_info_ocotp(void)
 
     unsigned top_user = 0;
 
+=======
+bool dbg_hw_info_dri(void)
+{
+    lcd_setfont(FONT_SYSFIXED);
+
+>>>>>>> stfm/dri: WIP
     while(1)
     {
         int button = get_action(CONTEXT_STD, HZ / 10);
         switch(button)
         {
             case ACTION_STD_NEXT:
+<<<<<<< HEAD
                 top_user++;
                 break;
             case ACTION_STD_PREV:
                 if(top_user > 0)
                     top_user--;
                 break;
+=======
+            case ACTION_STD_PREV:
+>>>>>>> stfm/dri: WIP
             case ACTION_STD_OK:
             case ACTION_STD_MENU:
                 lcd_setfont(FONT_UI);
@@ -601,6 +613,7 @@ bool dbg_hw_info_ocotp(void)
         }
 
         lcd_clear_display();
+<<<<<<< HEAD
         unsigned cur_line = 0;
         unsigned last_line = lcd_getheight() / font_get(lcd_getfont())->height;
         unsigned i = 0;
@@ -616,6 +629,12 @@ bool dbg_hw_info_ocotp(void)
         if(i < top_user)
             top_user = i - 1;
         
+=======
+        struct imx233_dri_info_t info = imx233_dri_get_info();
+        lcd_putsf(0, 0, "DRI");
+        lcd_putsf(0, 1, "run: %d", info.running);
+        lcd_putsf(0, 2, "inputs: %d", info.inputs_enabled);
+>>>>>>> stfm/dri: WIP
         lcd_update();
         yield();
     }
@@ -626,7 +645,11 @@ bool dbg_hw_info(void)
     return dbg_hw_info_clkctrl() && dbg_hw_info_dma() && dbg_hw_info_adc() &&
         dbg_hw_info_power() && dbg_hw_info_powermgmt() && dbg_hw_info_rtc() &&
         dbg_hw_info_dcp() && dbg_hw_info_pinctrl() && dbg_hw_info_icoll() &&
-        dbg_hw_info_ocotp() && dbg_hw_target_info();
+<<<<<<< HEAD
+        dbg_hw_info_ocotp() && dbg_hw_info_dri() && dbg_hw_target_info();
+=======
+        dbg_hw_info_dri() && dbg_hw_target_info();
+>>>>>>> stfm/dri: WIP
 }
 
 bool dbg_ports(void)

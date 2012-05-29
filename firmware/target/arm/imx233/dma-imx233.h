@@ -76,6 +76,7 @@
 #define HW_APBX_AUDIO_ADC   0
 #define HW_APBX_AUDIO_DAC   1
 #define HW_APBX_I2C         3
+#define HW_APBX_DRI         5
 
 #define HW_APBX_BASE        0x80024000
 
@@ -164,6 +165,7 @@ struct imx233_dma_info_t
 #define APB_AUDIO_DAC       APBX_DMA_CHANNEL(HW_APBX_AUDIO_DAC)
 #define APB_I2C             APBX_DMA_CHANNEL(HW_APBX_I2C)
 #define APB_NAND(dev)       APBH_DMA_CHANNEL(HW_APBH_NAND(dev))
+#define APB_DRI             APBX_DMA_CHANNEL(HW_APBX_DRI)
 
 #define HW_APB_CHx_CMD__COMMAND_BM         0x3
 #define HW_APB_CHx_CMD__COMMAND_BP         0

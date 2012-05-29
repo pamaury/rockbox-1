@@ -31,6 +31,11 @@
 
 struct stfm1000_dbg_info
 {
+    uint32_t tune1;
+    uint32_t sdnominal;
+    uint32_t pilottracking;
+    uint32_t rssi_tone;
+    uint32_t pilotcorrection;
     uint32_t chipid;
 };
 

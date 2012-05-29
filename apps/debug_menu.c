@@ -1922,6 +1922,11 @@ static int radio_callback(int btn, struct gui_synclist *lists)
         struct stfm1000_dbg_info nfo;
         stfm1000_dbg_info(&nfo);
         simplelist_addline(SIMPLELIST_ADD_LINE, "STFM1000 regs:");
+        simplelist_addline(SIMPLELIST_ADD_LINE,"tune1: 0x%x", nfo.tune1);
+        simplelist_addline(SIMPLELIST_ADD_LINE,"sdnominal: 0x%x", nfo.sdnominal);
+        simplelist_addline(SIMPLELIST_ADD_LINE,"pilottracking: 0x%x", nfo.pilottracking);
+        simplelist_addline(SIMPLELIST_ADD_LINE,"rssi_tone: 0x%x", nfo.rssi_tone);
+        simplelist_addline(SIMPLELIST_ADD_LINE,"pilotcorrection: 0x%x", nfo.pilotcorrection);
         simplelist_addline(SIMPLELIST_ADD_LINE,"chipid: 0x%x", nfo.chipid);
     }
 #endif /* STFM1000 */
