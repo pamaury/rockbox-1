@@ -85,6 +85,10 @@ power_down:
     str     r0, [r1]
     mov     r0, #1
     bx      lr
+#elif defined(INSIGNIA_INFOCAST35)
+    str     r0, [r1]
+    mov     r0, #1
+    bx      lr
 #else
 #error No target defined !
 #endif

@@ -58,6 +58,7 @@ enum imx_model_t
     MODEL_FUZEPLUS = 0,
     MODEL_ZENXFI2 = 1,
     MODEL_ZENXFI3 = 2,
+    MODEL_INFOCAST35 = 3,
     /* new models go here */
 
     NUM_MODELS

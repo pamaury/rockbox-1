@@ -63,7 +63,7 @@ struct sd_config_t sd_config[] =
         .ssp = 1
     },
 #elif defined(CREATIVE_ZENXFI2)
-    /* The Zen X-Fi2 uses pin B1P29 for power*/
+    /* The Zen X-Fi2 uses pin B1P29 for power */
     {
         .name = "microSD",
         .flags = POWER_PIN | REMOVABLE | DETECT_INVERTED,
@@ -76,13 +76,20 @@ struct sd_config_t sd_config[] =
         .flags = WINDOW,
         .ssp = 2
     },
-    /* The Zen X-Fi3 uses pin #B0P07 for power*/
+    /* The Zen X-Fi3 uses pin #B0P07 for power */
     {
         .name = "microSD",
         .flags = POWER_PIN | POWER_INVERTED | REMOVABLE | POWER_DELAY,
         .power_pin = PIN(0, 7),
         .power_delay = HZ / 10, /* extra delay, to ramp up voltage? */
         .ssp = 1
+    },
+#elif defined(INSIGNIA_INFOCAST35)
+    /* The Insignia uses pin B1P29 for power */
+    {
+        .name = "internal/microSD",
+        .flags = REMOVABLE,
+        .ssp = 1,
     },
 #else
 #error You need to write the sd config!

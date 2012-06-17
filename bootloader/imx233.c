@@ -119,12 +119,9 @@ static void usb_mode(int connect_timeout)
     /* Put drivers initialized for USB connection into a known state */
     usb_close();
 }
-#else /* !HAVE_BOOTLOADER_USB_MODE */
-static void usb_mode(int connect_timeout)
-{
-    (void) connect_timeout;
-}
-#endif /* HAVE_BOOTLOADER_USB_MODE */
+#endif
+
+#include "pinctrl-imx233.h"
 
 void main(uint32_t arg, uint32_t addr) NORETURN_ATTR;
 void main(uint32_t arg, uint32_t addr)
@@ -158,6 +155,22 @@ void main(uint32_t arg, uint32_t addr)
         imx233_partitions_enable_window(false);
     }
 
+    while(true)
+    {
+        uint32_t bank0 = imx233_get_gpio_input_mask(0, 0xffffffff);
+        uint32_t bank1 = imx233_get_gpio_input_mask(1, 0xffffffff);
+        uint32_t bank2 = imx233_get_gpio_input_mask(2, 0xffffffff);
+        uint32_t bank3 = imx233_get_gpio_input_mask(3, 0xffffffff);
+        lcd_putsf(0, 5, "gpio: %08x %08x %08x %08x",
+            bank0, bank1, bank2, bank3);
+        lcd_putsf(0, 6, "pw: %d be: %d",
+            __XTRACT(HW_POWER_STS, PSWITCH), !(bank1&(1<<30)));
+        int data;
+        int btn = button_read_device(&data);
+        lcd_putsf(0, 7, "buttons: %x touch: %d/%d", btn, data >> 16, data & 0xffff);
+        lcd_update();
+    }
+
     ret = storage_init();
     if(ret < 0)
         error(EATA, ret, true);
@@ -170,8 +183,10 @@ void main(uint32_t arg, uint32_t addr)
     if((ret = disk_mount_all()) <= 0)
         error(EDISK, ret, false);
 
+#ifdef HAVE_BOOTLOADER_USB_MODE
     if(usb_detect() == USB_INSERTED)
         usb_mode(HZ);
+#endif
 
     printf("Loading firmware");
 

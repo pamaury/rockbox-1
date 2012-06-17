@@ -29,6 +29,8 @@
 #define TICK_TIMER_NR   0
 #elif defined(CREATIVE_ZENXFI3)
 #define TICK_TIMER_NR   0
+#elif defined(INSIGNIA_INFOCAST35)
+#define TICK_TIMER_NR   0
 #else
 #error Select tick timer !
 #endif

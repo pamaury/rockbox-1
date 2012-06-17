@@ -66,6 +66,7 @@ static struct current_step_bit_t g_4p2_charge_limit_bits[] =
     { 10, HW_POWER_5VCTRL__CHARGE_4P2_ILIMIT__10mA }
 };
 
+#if CONFIG_CHARGING
 void INT_VDD5V(void)
 {
     if(HW_POWER_CTRL & HW_POWER_CTRL__VBUSVALID_IRQ)
@@ -108,22 +109,6 @@ void power_init(void)
     __FIELD_SET(HW_POWER_LOOPCTRL, EN_RCSCALE, HW_POWER_LOOPCTRL__EN_RCSCALE__2X);
 }
 
-void power_off(void)
-{
-    /* wait a bit, useful for the user to stop touching anything */
-    sleep(HZ / 2);
-#ifdef SANSA_FUZEPLUS
-    /* This pin seems to be important to shutdown the hardware properly */
-    imx233_pinctrl_acquire_pin(0, 9, "power off");
-    imx233_set_pin_function(0, 9, PINCTRL_FUNCTION_GPIO);
-    imx233_enable_gpio_output(0, 9, true);
-    imx233_set_gpio_output(0, 9, true);
-#endif
-    /* power down */
-    HW_POWER_RESET = HW_POWER_RESET__UNLOCK | HW_POWER_RESET__PWD;
-    while(1);
-}
-
 unsigned int power_input_status(void)
 {
     return (usb_detect() == USB_INSERTED)
@@ -163,6 +148,27 @@ void imx233_power_set_stop_current(unsigned current)
             __REG_SET(HW_POWER_CHARGE) = g_charger_stop_current_bits[i].bit;
         }
     }
+}
+#else
+void power_init(void)
+{
+}
+#endif
+
+void power_off(void)
+{
+    /* wait a bit, useful for the user to stop touching anything */
+    sleep(HZ / 2);
+#ifdef SANSA_FUZEPLUS
+    /* This pin seems to be important to shutdown the hardware properly */
+    imx233_pinctrl_acquire_pin(0, 9, "power off");
+    imx233_set_pin_function(0, 9, PINCTRL_FUNCTION_GPIO);
+    imx233_enable_gpio_output(0, 9, true);
+    imx233_set_gpio_output(0, 9, true);
+#endif
+    /* power down */
+    HW_POWER_RESET = HW_POWER_RESET__UNLOCK | HW_POWER_RESET__PWD;
+    while(1);
 }
 
 struct imx233_power_info_t imx233_power_get_info(unsigned flags)

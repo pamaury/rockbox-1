@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright (C) 2011 by Amaury Pouly
+ * Copyright (C) 2012 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,23 +18,31 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-#include "adc-target.h"
-#include "adc-imx233.h"
 
-int imx233_adc_mapping[] =
-{
-    [ADC_BATTERY] = IMX233_ADC_BATTERY,
-    [ADC_DIE_TEMP] = IMX233_ADC_DIE_TEMP,
-    [ADC_VDDIO] = IMX233_ADC_VDDIO,
-    [ADC_5V] = HW_LRADC_CHANNEL_5V,
-    [ADC_BATT_TEMP] = IMX233_ADC_BATT_TEMP,
-};
+#include "config.h"
+#include "system.h"
+#include "fmradio_i2c.h"
+#include "pinctrl-imx233.h"
+#include "generic_i2c.h"
+#include "rds.h"
+#include "si4700.h"
 
-const char *imx233_adc_channel_name[] =
+void fmradio_i2c_init(void)
 {
-    [ADC_BATTERY] = "Battery(raw)",
-    [ADC_DIE_TEMP] = "Die temperature(°C)",
-    [ADC_VDDIO] = "VddIO",
-    [ADC_5V] = "Vdd5V",
-    [ADC_BATT_TEMP] = "Battery temperature(raw)",
-};
+}
+
+int fmradio_i2c_write(unsigned char address, const unsigned char* buf, int count)
+{
+    (void) address;
+    (void) buf;
+    (void) count;
+    return -1;
+}
+
+int fmradio_i2c_read(unsigned char address, unsigned char* buf, int count)
+{
+    (void) address;
+    (void) buf;
+    (void) count;
+    return -1;
+}

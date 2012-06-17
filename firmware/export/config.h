@@ -43,6 +43,7 @@
 #define IPOD_REMOTE_TUNER   0x40 /* Apple */
 #define RDA5802    0x80 /* RDA Microelectronics */
 #define STFM1000   0x100 /* Sigmatel */
+#define QN8005     0x200 /* Quintic QN8005(LB) */
 
 /* CONFIG_CODEC */
 #define MAS3587F 3587
@@ -147,6 +148,7 @@
 #define SAMSUNG_YPR0_PAD   53
 #define CREATIVE_ZENXFI2_PAD 54
 #define CREATIVE_ZENXFI3_PAD 55
+#define CHUMBY_PAD         56
 
 /* CONFIG_REMOTE_KEYPAD */
 #define H100_REMOTE   1
@@ -248,6 +250,7 @@
 #define LCD_YPR0      47
 #define LCD_CREATIVEZXFI2 48 /* as used by the Creative Zen X-Fi2 */
 #define LCD_CREATIVEZXFI3 49 /* as used by the Creative Zen X-Fi3 */
+#define LCD_INFOCAST35 50 /* as used by the Insignia Infocast 3.5"*/
 
 /* LCD_PIXELFORMAT */
 #define HORIZONTAL_PACKING 1
@@ -505,6 +508,8 @@ Lyre prototype 1 */
 #include "config/pandora.h"
 #elif defined(SAMSUNG_YPR0)
 #include "config/samsungypr0.h"
+#elif defined(INSIGNIA_INFOCAST35)
+#include "config/infocast35.h"
 #else
 /* no known platform */
 #endif

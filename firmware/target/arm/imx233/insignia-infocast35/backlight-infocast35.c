@@ -18,23 +18,42 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-#include "adc-target.h"
-#include "adc-imx233.h"
 
-int imx233_adc_mapping[] =
-{
-    [ADC_BATTERY] = IMX233_ADC_BATTERY,
-    [ADC_DIE_TEMP] = IMX233_ADC_DIE_TEMP,
-    [ADC_VDDIO] = IMX233_ADC_VDDIO,
-    [ADC_5V] = HW_LRADC_CHANNEL_5V,
-    [ADC_BATT_TEMP] = IMX233_ADC_BATT_TEMP,
-};
+#include "config.h"
+#include "system.h"
+#include "lcd.h"
+#include "backlight.h"
+#include "backlight-target.h"
+#include "pinctrl-imx233.h"
+#include "pwm-imx233.h"
 
-const char *imx233_adc_channel_name[] =
+void _backlight_set_brightness(int brightness)
 {
-    [ADC_BATTERY] = "Battery(raw)",
-    [ADC_DIE_TEMP] = "Die temperature(°C)",
-    [ADC_VDDIO] = "VddIO",
-    [ADC_5V] = "Vdd5V",
-    [ADC_BATT_TEMP] = "Battery temperature(raw)",
-};
+    imx233_pwm_setup_channel(2, 1024, HW_PWM_PERIODx__CDIV__DIV_64,
+        0, HW_PWM_PERIODx__STATE__HIGH,
+        (brightness * 1024) / 100, HW_PWM_PERIODx__STATE__LOW);
+    imx233_pwm_enable_channel(2, true);
+}
+
+bool _backlight_init(void)
+{
+    _backlight_set_brightness(DEFAULT_BRIGHTNESS_SETTING);
+    return true;
+}
+
+void _backlight_on(void)
+{
+#ifdef HAVE_LCD_ENABLE
+    lcd_enable(true); /* power on lcd + visible display */
+#endif
+    /* don't do anything special, the core will set the brightness */
+}
+
+void _backlight_off(void)
+{
+    /* there is no real on/off but we can set to 0 brightness */
+    _backlight_set_brightness(0);
+#ifdef HAVE_LCD_ENABLE
+    lcd_enable(false); /* power off visible display */
+#endif
+}

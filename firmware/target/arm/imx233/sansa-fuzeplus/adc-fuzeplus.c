@@ -33,10 +33,10 @@ int imx233_adc_mapping[] =
 
 const char *imx233_adc_channel_name[] =
 {
-    "Battery(raw)",
-    "Die temperature(°C)",
-    "VddIO(mV)",
-    "Vdd5V(mV)",
-    "Battery temperature(raw)",
-    "Channel 2",
+    [ADC_BATTERY] = "Battery(raw)",
+    [ADC_DIE_TEMP] = "Die temperature(°C)",
+    [ADC_VDDIO] = "VddIO(mV)",
+    [ADC_5V] = "Vdd5V(mV)",
+    [ADC_BATT_TEMP] = "Battery temperature(raw)",
+    [ADC_CH2] = "Channel 2",
 };

@@ -100,6 +100,11 @@ static const struct imx_md5sum_t imx_sums[] =
         MODEL_ZENXFI3, "658a24eeef5f7186ca731085d8822a87",
         { [VARIANT_DEFAULT] = {0, 18110576} }
     },
+    {
+        /* Version 9909.9909.9909 */
+        MODEL_INFOCAST35, "8662cf0180cdbc337a380edc363e4d1a",
+        { [VARIANT_DEFAULT] = {0, 29328} }
+    }
 };
 
 static struct crypto_key_t zero_key =
@@ -116,6 +121,8 @@ static const struct imx_model_desc_t imx_models[] =
                        1, &zero_key, 0, 0x40000000 },
     [MODEL_ZENXFI3] = {"Zen X-Fi3", dualboot_zenxfi3, sizeof(dualboot_zenxfi3), "zxf3", 83,
                        1, &zero_key, 0, 0x40000000 },
+    [MODEL_INFOCAST35] = {"Infocast 3.5\"", dualboot_infocast35, sizeof(dualboot_infocast35), "if35", 84,
+                       0, NULL, 0, 0x40000000 },
 };
 
 #define NR_IMX_SUMS     (sizeof(imx_sums) / sizeof(imx_sums[0]))
@@ -274,6 +281,10 @@ static enum imx_error_t patch_firmware(enum imx_model_t model,
                     return IMX_DONT_KNOW_HOW_TO_PATCH;
             }
             break;
+        case MODEL_INFOCAST35:
+            /* The Infocast uses the standard ____ sections, patch after third
+             * call */
+            return patch_std_zero_host_play(3, model, type, sb_file, boot, boot_sz);
         default:
             return IMX_DONT_KNOW_HOW_TO_PATCH;
     }

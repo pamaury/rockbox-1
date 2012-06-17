@@ -382,11 +382,11 @@ struct rkfw_header_t
 {
     char magic[MAGIC_RKFW_SIZE];
     uint16_t hdr_size; // UNSURE
-    uint32_t field_6;
+    uint32_t version;
     uint32_t field_A;
     uint16_t field_E;
     uint8_t field_10[5];
-    uint32_t field_15;
+    uint32_t field_15; // related to "device support"
     rkfw_blob_t loader;
     rkfw_blob_t update;
     uint8_t pad[60];
@@ -411,6 +411,8 @@ static int do_rkfw_image(uint8_t *buf, unsigned long size)
     else
         cprintf(RED, "Mismatch\n");
 
+    cprintf(GREEN, "  Version: ");
+    cprintf(YELLOW, "%x.%x.%x\n", (hdr->version >> 16) & 0xf, hdr->version & 0xf, 0);
     cprintf(GREEN, "  Loader: ");
     print_blob_interval(&hdr->loader);
     cprintf(OFF, "\n");
@@ -422,7 +424,6 @@ static int do_rkfw_image(uint8_t *buf, unsigned long size)
     save_blob(&hdr->update, buf, size, "update", 0, false);
 
     print("hdr_size", hdr_size);
-    print("field_6", field_6);
     print("field_A", field_A);
     print("field_E", field_E);
     print_arr("field_10", field_10, 5);

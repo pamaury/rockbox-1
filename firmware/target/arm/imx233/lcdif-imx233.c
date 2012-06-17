@@ -152,9 +152,20 @@ void imx233_lcdif_pio_send(bool data_mode, unsigned len, uint32_t *buf)
 void imx233_lcdif_dma_send(void *buf, unsigned width, unsigned height)
 {
     HW_LCDIF_CUR_BUF = (uint32_t)buf;
+    HW_LCDIF_NEXT_BUF = (uint32_t)buf;
     HW_LCDIF_TRANSFER_COUNT = 0;
     HW_LCDIF_TRANSFER_COUNT = (height << 16) | width;
     __REG_CLR(HW_LCDIF_CTRL) = HW_LCDIF_CTRL__RUN;
     __REG_SET(HW_LCDIF_CTRL) = HW_LCDIF_CTRL__DATA_SELECT;
     __REG_SET(HW_LCDIF_CTRL) = HW_LCDIF_CTRL__RUN;
+}
+
+void imx233_lcdif_enable_dotclk(bool en)
+{
+    uint32_t mask = HW_LCDIF_CTRL__DATA_SELECT | HW_LCDIF_CTRL__DOTCLK_MODE |
+        HW_LCDIF_CTRL__BYPASS_COUNT;
+    if(en)
+        __REG_SET(HW_LCDIF_CTRL) = mask;
+    else
+        __REG_CLR(HW_LCDIF_CTRL) = mask;
 }

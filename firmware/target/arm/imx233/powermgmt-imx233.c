@@ -26,6 +26,8 @@
 //#define LOGF_ENABLE
 #include "logf.h"
 
+#if CONFIG_CHARGING
+
 #if !defined(IMX233_CHARGE_CURRENT) || !defined(IMX233_STOP_CURRENT) \
     || !defined(IMX233_CHARGING_TIMEOUT) || !defined(IMX233_TOPOFF_TIMEOUT)
 #error You must define IMX233_CHARGE_CURRENT, IMX233_STOP_CURRENT, \
@@ -158,3 +160,5 @@ struct imx233_powermgmt_info_t imx233_powermgmt_get_info(void)
         charge_state == TRICKLE ? timeout_4p2_ilimit_increase - current_tick : 0;
     return info;
 }
+
+#endif

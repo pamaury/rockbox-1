@@ -43,6 +43,8 @@
 #define HW_LCDIF_CTRL__DATA_FORMAT_24_BIT   (1 << 1)
 #define HW_LCDIF_CTRL__RUN                  0x1
 #define HW_LCDIF_CTRL__DATA_SELECT          (1 << 16)
+#define HW_LCDIF_CTRL__DOTCLK_MODE          (1 << 17)
+#define HW_LCDIF_CTRL__BYPASS_COUNT         (1 << 19)
 
 #define HW_LCDIF_CTRL1          (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x10))
 #define HW_LCDIF_CTRL1__RESET           1
@@ -53,6 +55,7 @@
 #define HW_LCDIF_CTRL1__IRQ_BP          8
 #define HW_LCDIF_CTRL1__BYTE_PACKING_FORMAT_BM  (0xf << 16)
 #define HW_LCDIF_CTRL1__BYTE_PACKING_FORMAT_BP  16
+#define HW_LCDIF_CTRL1__RECOVER_ON_UNDERFLOW    (1 << 24)
 
 #define HW_LCDIF__VSYNC_EDGE_IRQ        1
 #define HW_LCDIF__CUR_FRAME_DONE_IRQ    2
@@ -60,13 +63,26 @@
 #define HW_LCDIF__OVERFLOW_IRQ          8
 
 #define HW_LCDIF_TRANSFER_COUNT (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x20))
+
 #define HW_LCDIF_CUR_BUF        (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x30))
+
 #define HW_LCDIF_NEXT_BUF       (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x40))
+
 #define HW_LCDIF_TIMING         (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x60))
 #define HW_LCDIF_TIMING__DATA_SETUP_BP  0
 #define HW_LCDIF_TIMING__DATA_HOLD_BP   8
 #define HW_LCDIF_TIMING__CMD_SETUP_BP   16
 #define HW_LCDIF_TIMING__CMD_HOLD_BP    24
+
+#define HW_LCDIF_VDCTRL0        (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x70))
+
+#define HW_LCDIF_VDCTRL1        (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x80))
+
+#define HW_LCDIF_VDCTRL2        (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x90))
+
+#define HW_LCDIF_VDCTRL3        (*(volatile uint32_t *)(HW_LCDIF_BASE + 0xa0))
+
+#define HW_LCDIF_VDCTRL4        (*(volatile uint32_t *)(HW_LCDIF_BASE + 0xb0))
 
 #define HW_LCDIF_CSC_COEFF0     (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x110))
 #define HW_LCDIF_CSC_COEFF1     (*(volatile uint32_t *)(HW_LCDIF_BASE + 0x120))
@@ -97,5 +113,6 @@ unsigned imx233_lcdif_enable_irqs(unsigned irq_bm); /* return old mask */
 void imx233_lcdif_wait_ready(void);
 void imx233_lcdif_pio_send(bool data_mode, unsigned len, uint32_t *buf);
 void imx233_lcdif_dma_send(void *buf, unsigned width, unsigned height);
+void imx233_lcdif_enable_dotclk(bool en);
 
 #endif /* __LCDIF_IMX233_H__ */

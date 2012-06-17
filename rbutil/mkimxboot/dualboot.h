@@ -3,3 +3,4 @@
 extern unsigned char dualboot_fuzeplus[152];
 extern unsigned char dualboot_zenxfi2[36];
 extern unsigned char dualboot_zenxfi3[36];
+extern unsigned char dualboot_infocast35[12];

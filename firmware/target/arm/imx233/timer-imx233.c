@@ -28,6 +28,8 @@
 #define USER_TIMER_NR   1
 #elif defined(CREATIVE_ZENXFI3)
 #define USER_TIMER_NR   1
+#elif defined(INSIGNIA_INFOCAST35)
+#define USER_TIMER_NR   1
 #else
 #error Select user timer !
 #endif

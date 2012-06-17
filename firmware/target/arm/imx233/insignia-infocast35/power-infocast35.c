@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright (C) 2011 by Amaury Pouly
+ * Copyright (C) 2012 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,23 +18,25 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-#include "adc-target.h"
-#include "adc-imx233.h"
 
-int imx233_adc_mapping[] =
-{
-    [ADC_BATTERY] = IMX233_ADC_BATTERY,
-    [ADC_DIE_TEMP] = IMX233_ADC_DIE_TEMP,
-    [ADC_VDDIO] = IMX233_ADC_VDDIO,
-    [ADC_5V] = HW_LRADC_CHANNEL_5V,
-    [ADC_BATT_TEMP] = IMX233_ADC_BATT_TEMP,
-};
+#include "system.h"
+#include "power.h"
+#include "tuner.h"
+#include "fmradio_i2c.h"
+#include "pinctrl-imx233.h"
+#include "power-imx233.h"
 
-const char *imx233_adc_channel_name[] =
+static bool tuner_enable = false;
+
+bool tuner_power(bool enable)
 {
-    [ADC_BATTERY] = "Battery(raw)",
-    [ADC_DIE_TEMP] = "Die temperature(°C)",
-    [ADC_VDDIO] = "VddIO",
-    [ADC_5V] = "Vdd5V",
-    [ADC_BATT_TEMP] = "Battery temperature(raw)",
-};
+    if(enable != tuner_enable)
+    {
+    }
+    return tuner_enable;
+}
+
+bool tuner_powered(void)
+{
+    return tuner_enable;
+}

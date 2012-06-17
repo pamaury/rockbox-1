@@ -1320,8 +1320,8 @@ cat <<EOF
  201) Android             ==ROCKCHIP==
  202) Nokia N8xx          180) rk27xx generic    ==HiFiMAN==
  203) Nokia N900                                 190) HM-60x
- 204) Pandora                                    191) HM-801
- 205) Samsung YP-R0
+ 204) Pandora             ==INSIGNIA==           191) HM-801
+ 205) Samsung YP-R0       220) Infocast 3.5"
  206) Android MIPS
 EOF
 
@@ -3372,6 +3372,26 @@ fi
     t_cpu="hosted"
     t_manufacturer="android"
     t_model="app"
+    ;;
+
+   220|infocast35)
+    target_id=80
+    modelname="infocast35"
+    target="INSIGNIA_INFOCAST35"
+    memory=64
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
+    tool="$rootdir/tools/scramble -add=if35"
+    output="rockbox.insignia"
+    bootoutput="bootloader-infocast35.insignia"
+    appextra="gui:recorder:radio"
+    plugins=""
+    swcodec="yes"
+    toolset=$scramblebitmaptools
+    t_cpu="arm"
+    t_manufacturer="imx233"
+    t_model="insignia-infocast35"
+    arm926ejscc
     ;;
 
    *)
