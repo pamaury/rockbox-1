@@ -230,6 +230,7 @@ vectors:
 
 #if defined(MIO_C510)
 #include "romhdr.S"
+.align      0x4
 #endif
 
 /*
