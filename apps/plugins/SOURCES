@@ -33,7 +33,6 @@ flipit.c
 shopper.c
 resistor.c
 
-
 #ifdef USB_ENABLE_HID
 remote_control.c
 #endif
@@ -74,7 +73,8 @@ iriverify.c
 /* Overlays loaders */
 #if PLUGIN_BUFFER_SIZE <= 0x20000 && defined(HAVE_LCD_BITMAP)
 
-#if CONFIG_KEYPAD != ONDIO_PAD && CONFIG_KEYPAD != SANSA_M200_PAD
+#if CONFIG_KEYPAD != ONDIO_PAD && CONFIG_KEYPAD != SANSA_M200_PAD \
+    && CONFIG_KEYPAD != HM60X_PAD
 /* not enough buttons for rockboy */
 rockboy.c
 #endif

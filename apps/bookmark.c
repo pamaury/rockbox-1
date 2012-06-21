@@ -42,7 +42,6 @@
 #include "plugin.h"
 #include "file.h"
 #include "filefuncs.h"
-#include "dsp.h"
 
 #define MAX_BOOKMARKS 10
 #define MAX_BOOKMARK_SIZE  350
@@ -93,8 +92,7 @@ static const char* get_bookmark_info(int list_index,
                                      void* data,
                                      char *buffer,
                                      size_t buffer_len);
-static char* select_bookmark(const char* bookmark_file_name, bool show_dont_resume);
-static bool  is_bookmarkable_state(void);
+static int   select_bookmark(const char* bookmark_file_name, bool show_dont_resume, char** selected_bookmark);
 static bool  write_bookmark(bool create_bookmark_file, const char *bookmark);
 static int   get_bookmark_count(const char* bookmark_file_name);
 
@@ -109,43 +107,49 @@ static char global_bookmark[MAX_BOOKMARK_SIZE];
 static char global_filename[MAX_PATH];
 
 /* ----------------------------------------------------------------------- */
-/* This is the interface function from the main menu.                      */
+/* This is an interface function from the context menu.                    */
+/* Returns true on successful bookmark creation.                           */
 /* ----------------------------------------------------------------------- */
 bool bookmark_create_menu(void)
 {
-    write_bookmark(true, create_bookmark());
-    return false;
+    return write_bookmark(true, create_bookmark());
 }
 
 /* ----------------------------------------------------------------------- */
-/* This function acts as the load interface from the main menu             */
+/* This function acts as the load interface from the context menu.         */
 /* This function determines the bookmark file name and then loads that file*/
-/* for the user.  The user can then select a bookmark to load.             */
-/* If no file/directory is currently playing, the menu item does not work. */
+/* for the user.  The user can then select or delete previous bookmarks.   */
+/* This function returns BOOKMARK_SUCCESS on the selection of a track to   */
+/* resume, BOOKMARK_FAIL if the menu is exited without a selection and     */
+/* BOOKMARK_USB_CONNECTED if the menu is forced to exit due to a USB       */
+/* connection.                                                             */
 /* ----------------------------------------------------------------------- */
-bool bookmark_load_menu(void)
+int bookmark_load_menu(void)
 {
-    if (is_bookmarkable_state())
-    {
-        char* name = playlist_get_name(NULL, global_temp_buffer,
+    char* bookmark;
+    int ret = BOOKMARK_FAIL;
+
+    push_current_activity(ACTIVITY_BOOKMARKSLIST);
+
+    char* name = playlist_get_name(NULL, global_temp_buffer,
                                        sizeof(global_temp_buffer));
-        if (generate_bookmark_file_name(name))
+    if (generate_bookmark_file_name(name))
+    {
+        ret = select_bookmark(global_bookmark_file_name, false, &bookmark);
+        if (bookmark != NULL)
         {
-            char* bookmark = select_bookmark(global_bookmark_file_name, false);
-            
-            if (bookmark != NULL)
-            {
-                return play_bookmark(bookmark);
-            }
+            ret = play_bookmark(bookmark) ? BOOKMARK_SUCCESS : BOOKMARK_FAIL;
         }
     }
 
-    return false;
+    pop_current_activity();
+    return ret;
 }
 
 /* ----------------------------------------------------------------------- */
 /* Gives the user a list of the Most Recent Bookmarks.  This is an         */
 /* interface function                                                      */
+/* Returns true on the successful selection of a recent bookmark.          */
 /* ----------------------------------------------------------------------- */
 bool bookmark_mrb_load()
 {
@@ -153,7 +157,7 @@ bool bookmark_mrb_load()
     bool ret = false;
 
     push_current_activity(ACTIVITY_BOOKMARKSLIST);
-    bookmark = select_bookmark(RECENT_BOOKMARK_FILE, false);
+    select_bookmark(RECENT_BOOKMARK_FILE, false, &bookmark);
     if (bookmark != NULL)
     {
         ret = play_bookmark(bookmark);
@@ -166,13 +170,14 @@ bool bookmark_mrb_load()
 /* ----------------------------------------------------------------------- */
 /* This function handles an autobookmark creation.  This is an interface   */
 /* function.                                                               */
+/* Returns true on successful bookmark creation.                           */
 /* ----------------------------------------------------------------------- */
 bool bookmark_autobookmark(bool prompt_ok)
 {
     char*  bookmark;
     bool update;
 
-    if (!is_bookmarkable_state())
+    if (!bookmark_is_bookmarkable_state())
         return false;
 
     audio_pause();    /* first pause playback */
@@ -225,36 +230,50 @@ bool bookmark_autobookmark(bool prompt_ok)
 /* This file will contain N number of bookmarks in the following format:   */
 /* resume_index*resume_offset*resume_seed*resume_first_index*              */
 /* resume_file*milliseconds*MP3 Title*                                     */
+/* Returns true on successful bookmark write.                              */
+/* Returns false if any part of the bookmarking process fails.  It is      */
+/* possible that a bookmark is successfully added to the most recent        */
+/* bookmark list but fails to be added to the bookmark file or vice versa. */
 /* ------------------------------------------------------------------------*/
 static bool write_bookmark(bool create_bookmark_file, const char *bookmark)
 {
-    bool   success=false;
+    bool ret=true;
+
     if (!bookmark)
-       return false; /* something didn't happen correctly, do nothing */
-
-    if (global_settings.usemrb)
-        success = add_bookmark(RECENT_BOOKMARK_FILE, bookmark, true);
-
-
-    /* writing the bookmark */
-    if (create_bookmark_file)
     {
-        char* name = playlist_get_name(NULL, global_temp_buffer,
-                                       sizeof(global_temp_buffer));
-        if (generate_bookmark_file_name(name))
+       ret = false; /* something didn't happen correctly, do nothing */
+    }
+    else
+    {
+        if (global_settings.usemrb)
+            ret = add_bookmark(RECENT_BOOKMARK_FILE, bookmark, true);
+
+
+        /* writing the bookmark */
+        if (create_bookmark_file)
         {
-            success = add_bookmark(global_bookmark_file_name, bookmark, false);
+            char* name = playlist_get_name(NULL, global_temp_buffer,
+                                       sizeof(global_temp_buffer));
+            if (generate_bookmark_file_name(name))
+            {
+                ret = ret & add_bookmark(global_bookmark_file_name, bookmark, false);
+            }
+            else
+            {
+                ret = false; /* generating bookmark file failed */
+            }
         }
     }
 
-    splash(HZ, success ? ID2P(LANG_BOOKMARK_CREATE_SUCCESS)
+    splash(HZ, ret ? ID2P(LANG_BOOKMARK_CREATE_SUCCESS)
            : ID2P(LANG_BOOKMARK_CREATE_FAILURE));
 
-    return true;
+    return ret;
 }
 
 /* ----------------------------------------------------------------------- */
 /* This function adds a bookmark to a file.                                */
+/* Returns true on successful bookmark add.                                */
 /* ------------------------------------------------------------------------*/
 static bool add_bookmark(const char* bookmark_file_name, const char* bookmark, 
                          bool most_recent)
@@ -326,13 +345,14 @@ static bool add_bookmark(const char* bookmark_file_name, const char* bookmark,
 /* ----------------------------------------------------------------------- */
 /* This function takes the system resume data and formats it into a valid  */
 /* bookmark.                                                               */
+/* Returns not NULL on successful bookmark format.                         */
 /* ----------------------------------------------------------------------- */
 static char* create_bookmark()
 {
     int resume_index = 0;
     char *file;
 
-    if (!is_bookmarkable_state())
+    if (!bookmark_is_bookmarkable_state())
         return NULL; /* something didn't happen correctly, do nothing */
 
     /* grab the currently playing track */
@@ -354,13 +374,13 @@ static char* create_bookmark()
     snprintf(global_bookmark, sizeof(global_bookmark),
              /* new optional bookmark token descriptors should be inserted
                 just before the "%s;%s" in this line... */
-#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHSCREEN)
+#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHCONTROL)
              ">%d;%d;%ld;%d;%ld;%d;%d;%ld;%ld;%s;%s",
 #else
              ">%d;%d;%ld;%d;%ld;%d;%d;%s;%s",
 #endif
              /* ... their flags should go here ... */
-#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHSCREEN)
+#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHCONTROL)
              BM_PITCH | BM_SPEED,
 #else
              0,
@@ -372,7 +392,7 @@ static char* create_bookmark()
              global_settings.repeat_mode,
              global_settings.playlist_shuffle,
              /* ...and their values should go here */
-#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHSCREEN)
+#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHCONTROL)
              (long)sound_get_pitch(),
              (long)dsp_get_timestretch(),
 #endif
@@ -391,9 +411,12 @@ static char* create_bookmark()
 /* ----------------------------------------------------------------------- */
 /* This function will determine if an autoload is necessary.  This is an   */
 /* interface function.                                                     */
+/* Returns true on bookmark load or bookmark selection.                    */
 /* ------------------------------------------------------------------------*/
 bool bookmark_autoload(const char* file)
 {
+    char* bookmark;
+
     if(global_settings.autoloadbookmark == BOOKMARK_NO)
         return false;
 
@@ -412,7 +435,7 @@ bool bookmark_autoload(const char* file)
     }
     else
     {
-        char* bookmark = select_bookmark(global_bookmark_file_name, true);
+        select_bookmark(global_bookmark_file_name, true, &bookmark);
         
         if (bookmark != NULL)
         {
@@ -435,6 +458,7 @@ bool bookmark_autoload(const char* file)
 /* ----------------------------------------------------------------------- */
 /* This function loads the bookmark information into the resume memory.    */
 /* This is an interface function.                                          */
+/* Returns true on successful bookmark load.                               */
 /* ------------------------------------------------------------------------*/
 bool bookmark_load(const char* file, bool autoload)
 {
@@ -454,7 +478,7 @@ bool bookmark_load(const char* file, bool autoload)
     else
     {
         /* This is not an auto-load, so list the bookmarks */
-        bookmark = select_bookmark(file, false);
+        select_bookmark(file, false, &bookmark);
     }
 
     if (bookmark != NULL)
@@ -668,10 +692,15 @@ static int bookmark_list_voice_cb(int list_index, void* data)
 }
 
 /* ----------------------------------------------------------------------- */
-/* This displays a the bookmarks in a file and allows the user to          */
+/* This displays the bookmarks in a file and allows the user to            */
 /* select one to play.                                                     */
+/* *selected_bookmark contains a non NULL value on successful bookmark     */
+/* selection.                                                              */
+/* Returns BOOKMARK_SUCCESS on successful bookmark selection, BOOKMARK_FAIL*/
+/* if no selection was made and BOOKMARK_USB_CONNECTED if the selection    */
+/* menu is forced to exit due to a USB connection.                         */
 /* ------------------------------------------------------------------------*/
-static char* select_bookmark(const char* bookmark_file_name, bool show_dont_resume)
+static int select_bookmark(const char* bookmark_file_name, bool show_dont_resume, char** selected_bookmark)
 {
     struct bookmark_list* bookmarks;
     struct gui_synclist list;
@@ -680,6 +709,7 @@ static char* select_bookmark(const char* bookmark_file_name, bool show_dont_resu
     size_t size;
     bool exit = false;
     bool refresh = true;
+    int ret = BOOKMARK_FAIL;
 
     bookmarks = plugin_get_buffer(&size);
     bookmarks->buffer_size = size;
@@ -707,7 +737,8 @@ static char* select_bookmark(const char* bookmark_file_name, bool show_dont_resu
                 /* No more bookmarks, delete file and exit */
                 splash(HZ, ID2P(LANG_BOOKMARK_LOAD_EMPTY));
                 remove(bookmark_file_name);
-                return NULL;
+                *selected_bookmark = NULL;
+                return BOOKMARK_FAIL;
             }
 
             if (bookmarks->show_dont_resume)
@@ -767,7 +798,8 @@ static char* select_bookmark(const char* bookmark_file_name, bool show_dont_resu
             if (item >= 0)
             {
                 talk_shutup();
-                return bookmarks->items[item - bookmarks->start];
+                *selected_bookmark = bookmarks->items[item - bookmarks->start];
+                return BOOKMARK_SUCCESS;
             }
             
             /* Else fall through */
@@ -802,6 +834,7 @@ static char* select_bookmark(const char* bookmark_file_name, bool show_dont_resu
         default:
             if (default_event_handler(action) == SYS_USB_CONNECTED)
             {
+                ret = BOOKMARK_USB_CONNECTED;
                 exit = true;
             }
 
@@ -810,12 +843,14 @@ static char* select_bookmark(const char* bookmark_file_name, bool show_dont_resu
     }
 
     talk_shutup();
-    return NULL;
+    *selected_bookmark = NULL;
+    return ret;
 }
 
 /* ----------------------------------------------------------------------- */
 /* This function takes a location in a bookmark file and deletes that      */
 /* bookmark.                                                               */
+/* Returns true on successful bookmark deletion.                           */
 /* ------------------------------------------------------------------------*/
 static bool delete_bookmark(const char* bookmark_file_name, int bookmark_id)
 {
@@ -915,10 +950,11 @@ static void say_bookmark(const char* bookmark,
 
 /* ----------------------------------------------------------------------- */
 /* This function parses a bookmark and then plays it.                      */
+/* Returns true on successful bookmark play.                               */
 /* ------------------------------------------------------------------------*/
 static bool play_bookmark(const char* bookmark)
 {
-#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHSCREEN)
+#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHCONTROL)
     /* preset pitch and speed to 100% in case bookmark doesn't have info */
     bm.pitch = sound_get_pitch();
     bm.speed = dsp_get_timestretch();
@@ -928,7 +964,7 @@ static bool play_bookmark(const char* bookmark)
     {
         global_settings.repeat_mode = bm.repeat_mode;
         global_settings.playlist_shuffle = bm.shuffle;
-#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHSCREEN)
+#if CONFIG_CODEC == SWCODEC && defined(HAVE_PITCHCONTROL)
         sound_set_pitch(bm.pitch);
         dsp_set_timestretch(bm.speed);
 #endif
@@ -972,6 +1008,7 @@ static const char* long_token(const char* s, long* dest)
 /* This function takes a bookmark and parses it.  This function also       */
 /* validates the bookmark.  The parse_filenames flag indicates whether     */
 /* the filename tokens are to be extracted.                                */
+/* Returns true on successful bookmark parse.                              */
 /* ----------------------------------------------------------------------- */
 static bool parse_bookmark(const char *bookmark, const bool parse_filenames)
 {
@@ -1038,6 +1075,7 @@ static bool parse_bookmark(const char *bookmark, const bool parse_filenames)
 /* Changing this function could result in how the bookmarks are stored.    */
 /* it would be here that the centralized/decentralized bookmark code       */
 /* could be placed.                                                        */
+/* Always returns true                                                     */
 /* ----------------------------------------------------------------------- */
 static bool generate_bookmark_file_name(const char *in)
 {
@@ -1070,30 +1108,28 @@ static bool generate_bookmark_file_name(const char *in)
 }
 
 /* ----------------------------------------------------------------------- */
-/* Returns true if a bookmark file exists for the current playlist         */
+/* Returns true if a bookmark file exists for the current playlist.        */
+/* This is an interface function.                                          */
 /* ----------------------------------------------------------------------- */
 bool bookmark_exists(void)
 {
     bool exist=false;
 
-    if(is_bookmarkable_state())
+    char* name = playlist_get_name(NULL, global_temp_buffer,
+                                   sizeof(global_temp_buffer));
+    if (generate_bookmark_file_name(name))
     {
-        char* name = playlist_get_name(NULL, global_temp_buffer,
-                                       sizeof(global_temp_buffer));
-        if (generate_bookmark_file_name(name))
-        {
-            exist = file_exists(global_bookmark_file_name);
-        }
+        exist = file_exists(global_bookmark_file_name);
     }
-
     return exist;
 }
 
 /* ----------------------------------------------------------------------- */
 /* Checks the current state of the system and returns true if it is in a   */
 /* bookmarkable state.                                                     */
+/* This is an interface funtion.                                           */
 /* ----------------------------------------------------------------------- */
-static bool is_bookmarkable_state(void)
+bool bookmark_is_bookmarkable_state(void)
 {
     int resume_index = 0;
 

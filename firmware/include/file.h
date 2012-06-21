@@ -37,7 +37,7 @@
 #define MAX_OPEN_FILES 11
 
 #if !defined(PLUGIN) && !defined(CODEC)
-#if defined(APPLICATION)
+#if defined(APPLICATION) && !defined(__PCTOOL__)
 #   define open(x, ...)    app_open(x, __VA_ARGS__)
 #   define creat(x,m)      app_creat(x, m)
 #   define remove(x)       app_remove(x)
@@ -47,7 +47,6 @@ extern int app_creat(const char *name, mode_t mode);
 extern int app_remove(const char* pathname);
 extern int app_rename(const char* path, const char* newname);
 #   if (CONFIG_PLATFORM & (PLATFORM_SDL|PLATFORM_MAEMO|PLATFORM_PANDORA))
-#   define filesize(x) sim_filesize(x)
 #   define fsync(x) sim_fsync(x)
 #   define ftruncate(x,y) sim_ftruncate(x,y)
 #   define lseek(x,y,z) sim_lseek(x,y,z)
@@ -60,7 +59,6 @@ extern int app_rename(const char* path, const char* newname);
 #   define creat(x,m) sim_creat(x,m)
 #   define remove(x) sim_remove(x)
 #   define rename(x,y) sim_rename(x,y)
-#   define filesize(x) sim_filesize(x)
 #   define fsync(x) sim_fsync(x)
 #   define ftruncate(x,y) sim_ftruncate(x,y)
 #   define lseek(x,y,z) sim_lseek(x,y,z)
@@ -84,17 +82,15 @@ extern int fsync(int fd);
 extern ssize_t read(int fd, void *buf, size_t count);
 extern off_t lseek(int fildes, off_t offset, int whence);
 extern int file_creat(const char *pathname);
-#if (CONFIG_PLATFORM & PLATFORM_NATIVE) && !defined(__PCTOOL__)
-/* posix compatibility function */
-static inline int creat(const char *pathname, mode_t mode)
-{
-    (void)mode;
-    return file_creat(pathname);
-}
+#if ((CONFIG_PLATFORM & PLATFORM_NATIVE) && !defined(__PCTOOL__)) || \
+    defined(TEST_FAT)
+#define creat(x, y) file_creat(x)
+
 #if !defined(CODEC) && !defined(PLUGIN)
 #define open(x, y, ...) file_open(x,y)
 #endif
 #endif
+
 extern ssize_t write(int fd, const void *buf, size_t count);
 extern int remove(const char* pathname);
 extern int rename(const char* path, const char* newname);

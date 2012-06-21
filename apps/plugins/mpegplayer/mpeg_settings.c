@@ -256,6 +256,14 @@ struct mpeg_settings settings;
 #define MPEG_START_TIME_DOWN        BUTTON_DOWN
 #define MPEG_START_TIME_EXIT        BUTTON_BACK
 
+#elif (CONFIG_KEYPAD == HM60X_PAD) || (CONFIG_KEYPAD == HM801_PAD)
+#define MPEG_START_TIME_SELECT      BUTTON_SELECT
+#define MPEG_START_TIME_LEFT        BUTTON_LEFT
+#define MPEG_START_TIME_RIGHT       BUTTON_RIGHT
+#define MPEG_START_TIME_UP          BUTTON_UP
+#define MPEG_START_TIME_DOWN        BUTTON_DOWN
+#define MPEG_START_TIME_EXIT        BUTTON_POWER
+
 #else
 #error No keymap defined!
 #endif
@@ -449,13 +457,14 @@ static void sync_audio_setting(int setting, bool global)
         break;
 
     case MPEG_AUDIO_CROSSFEED:
-        rb->dsp_set_crossfeed((global || settings.crossfeed) ?
-                              rb->global_settings->crossfeed : false);
+        rb->dsp_set_crossfeed_type((global || settings.crossfeed) ?
+                                   rb->global_settings->crossfeed :
+                                   CROSSFEED_TYPE_NONE);
         break;
 
     case MPEG_AUDIO_EQUALIZER:
-        rb->dsp_set_eq((global || settings.equalizer) ?
-                       rb->global_settings->eq_enabled : false);
+        rb->dsp_eq_enable((global || settings.equalizer) ?
+                          rb->global_settings->eq_enabled : false);
         break;
 
     case MPEG_AUDIO_DITHERING:

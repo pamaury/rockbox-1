@@ -31,8 +31,8 @@
 extern JNIEnv *env_ptr;
 
 /* infos about our pcm chunks */
+static const void *pcm_data_start;
 static size_t  pcm_data_size;
-static char   *pcm_data_start;
 static int     audio_locked = 0;
 static pthread_mutex_t audio_lock_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -80,8 +80,8 @@ Java_org_rockbox_RockboxPCM_nativeWrite(JNIEnv *env, jobject this,
 
     if (!pcm_data_size) /* get some initial data */
     {
-        new_buffer = true;
-        pcm_play_get_more_callback((void**) &pcm_data_start, &pcm_data_size);
+        new_buffer = pcm_play_dma_complete_callback(PCM_DMAST_OK,
+                            &pcm_data_start, &pcm_data_size);
     }
 
     while(left > 0 && pcm_data_size)
@@ -99,7 +99,7 @@ Java_org_rockbox_RockboxPCM_nativeWrite(JNIEnv *env, jobject this,
         if (new_buffer)
         {
             new_buffer = false;
-            pcm_play_dma_started_callback();
+            pcm_play_dma_status_callback(PCM_DMAST_STARTED);
 
             /* NOTE: might need to release the mutex and sleep here if the
                buffer is shorter than the required buffer (like pcm-sdl.c) to
@@ -114,15 +114,15 @@ Java_org_rockbox_RockboxPCM_nativeWrite(JNIEnv *env, jobject this,
 
         if (pcm_data_size == 0) /* need new data */
         {
-            new_buffer = true;
-            pcm_play_get_more_callback((void**)&pcm_data_start, &pcm_data_size);
+            new_buffer = pcm_play_dma_complete_callback(PCM_DMAST_OK,
+                                &pcm_data_start, &pcm_data_size);
         }
         else /* increment data pointer and feed more */
             pcm_data_start += transfer_size;
     }
 
-    if (new_buffer && pcm_data_size)
-        pcm_play_dma_started_callback();
+    if (new_buffer)
+        pcm_play_dma_status_callback(PCM_DMAST_STARTED);
 
     unlock_audio();
     return max_size - left;
@@ -146,7 +146,7 @@ void pcm_dma_apply_settings(void)
 
 void pcm_play_dma_start(const void *addr, size_t size)
 {
-    pcm_data_start = (char*)addr;
+    pcm_data_start = addr;
     pcm_data_size = size;
     
     pcm_play_dma_pause(false);
@@ -154,7 +154,7 @@ void pcm_play_dma_start(const void *addr, size_t size)
 
 void pcm_play_dma_stop(void)
 {
-    /* NOTE: due to how pcm_play_get_more_callback() works, this is
+    /* NOTE: due to how pcm_play_dma_complete_callback() works, this is
      * possibly called from nativeWrite(), i.e. another (host) thread
      * => need to discover the appropriate JNIEnv* */
     JNIEnv* env = getJavaEnvironment();

@@ -9,7 +9,7 @@
 
 PACKAGE=org.rockbox
 PACKAGE_PATH=org/rockbox
-BINLIB_DIR=$(BUILDDIR)/libs/armeabi
+BINLIB_DIR=$(BUILDDIR)/libs/$(ANDROID_ARCH)
 ANDROID_DIR=$(ROOTDIR)/android
 
 # this is a glibc compatibility hack to provide a get_nprocs() replacement.
@@ -28,7 +28,7 @@ $(CPUFEAT_BUILD)/cpu-features.o: $(CPUFEAT)/cpu-features.c
 .PHONY: apk classes clean dex dirs libs jar
 
 # API version
-ANDROID_PLATFORM_VERSION=11
+ANDROID_PLATFORM_VERSION=15
 ANDROID_PLATFORM=$(ANDROID_SDK_PATH)/platforms/android-$(ANDROID_PLATFORM_VERSION)
 
 # android tools
@@ -70,7 +70,7 @@ APK		:= $(BUILDDIR)/rockbox.apk
 _DIRS		:= $(BUILDDIR)/___/$(PACKAGE_PATH)
 DIRS		+= $(subst ___,gen,$(_DIRS))
 DIRS		+= $(subst ___,data,$(_DIRS))
-DIRS		+= $(BUILDDIR)/libs/armeabi
+DIRS		+= $(BUILDDIR)/libs/$(ANDROID_ARCH)
 DIRS		+= $(CPUFEAT_BUILD)
 DIRS		+= $(CLASSPATH)
 
@@ -78,7 +78,7 @@ RES		:= $(wildcard $(ANDROID_DIR)/res/*/*)
 
 CLEANOBJS += bin gen libs data
 
-JAVAC_OPTS += -implicit:none -classpath $(ANDROID_PLATFORM)/android.jar:$(CLASSPATH)
+JAVAC_OPTS += -source 1.6 -target 1.6 -implicit:none -classpath $(ANDROID_PLATFORM)/android.jar:$(CLASSPATH)
 
 .PHONY:
 $(MANIFEST): $(MANIFEST_SRC) $(DIRS)
@@ -114,9 +114,9 @@ dex: $(DEX)
 classes: $(R_OBJ) $(JAVA_OBJ)
 
 
-$(BUILDDIR)/$(BINARY): $$(OBJ) $(VOICESPEEXLIB) $(FIRMLIB) $(SKINLIB) $(CPUFEAT_BUILD)/cpu-features.o
+$(BUILDDIR)/$(BINARY): $$(OBJ) $(FIRMLIB) $(VOICESPEEXLIB) $(CORE_LIBS) $(CPUFEAT_BUILD)/cpu-features.o
 	$(call PRINTS,LD $(BINARY))$(CC) -o $@ $^ $(LDOPTS) $(GLOBAL_LDOPTS) -Wl,-Map,$(BUILDDIR)/rockbox.map
-	$(call PRINTS,OC $(@F))$(OC) -S -x $@
+	$(call PRINTS,OC $(@F))$(call objcopy,$@,$@)
 
 $(BINLIB_DIR)/$(BINARY): $(BUILDDIR)/$(BINARY)
 	$(call PRINTS,CP $(BINARY))cp $^ $@
@@ -124,7 +124,7 @@ $(BINLIB_DIR)/$(BINARY): $(BUILDDIR)/$(BINARY)
 $(BINLIB_DIR)/libmisc.so: $(BUILDDIR)/rockbox.zip
 	$(call PRINTS,CP rockbox.zip)cp $^ $@
 
-$(BINLIB_DIR)/lib%.so: $(BUILDDIR)/apps/codecs/%.codec
+$(BINLIB_DIR)/lib%.so: $(RBCODEC_BLD)/codecs/%.codec
 	$(call PRINTS,CP $(@F))cp $^ $@
 
 libs: $(DIRS) $(LIBS)
@@ -148,7 +148,8 @@ endif
 	$(SILENT)rm -f $@
 	$(call PRINTS,SIGN $(subst $(BUILDDIR)/,,$@))jarsigner \
 		-keystore "$(KEYSTORE)" -storepass "android" -keypass "android" \
-		-signedjar $(TEMP_APK2) $(TEMP_APK) "androiddebugkey"
+		-signedjar $(TEMP_APK2) $(TEMP_APK) "androiddebugkey" \
+		-sigalg MD5withRSA -digestalg SHA1
 	$(SILENT)$(ZIPALIGN) -v 4 $(TEMP_APK2) $@ > /dev/null
 
 $(DIRS):

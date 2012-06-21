@@ -7,7 +7,7 @@
 # $Id$
 #
 
-CFLAGS += -Wall -W -D__USE_MINGW_ANSI_STDIO=1
+CFLAGS += -Wall -W
 
 # Build with "make BOOTOBJS=1" to build with embedded bootloaders and the 
 # --install option and interactive mode.  You need the full set of Rockbox 
@@ -45,14 +45,11 @@ include ../libtools.make
 $(OBJDIR)ipodpatcher-rc.o: ipodpatcher.rc ipodpatcher.manifest
 	$(CROSS)$(WINDRES) -i ipodpatcher.rc -o ipodpatcher-rc.o
 
-ipod2c: ipod2c.c
-	$(NATIVECC) $(CFLAGS) -o ipod2c ipod2c.c
+%.c: bootloader-%.ipod $(BIN2C)
+	@echo BIN2C $<
+	$(SILENT)$(BIN2C) -i $< $*
 
-%.c: bootloader-%.ipod ipod2c
-	@echo IPOD2C $<
-	$(SILENT)./ipod2c $< $*
-
-%.c: bootloader-%.ipodx ipod2c
-	@echo IPOD2C $<
-	$(SILENT)./ipod2c $< $*
+%.c: bootloader-%.ipodx $(BIN2C)
+	@echo BIN2C $<
+	$(SILENT)$(BIN2C) -i $< $*
 

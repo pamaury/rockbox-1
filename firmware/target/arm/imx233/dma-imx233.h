@@ -36,6 +36,7 @@
 
 /* APHB channels */
 #define HW_APBH_SSP(ssp)    ssp
+#define HW_APBH_NAND(dev)   (4 + (ssp))
 
 #define HW_APBH_CTRL0       (*(volatile uint32_t *)(HW_APBH_BASE + 0x0))
 #define HW_APBH_CTRL0__FREEZE_CHANNEL(i)    (1 << (i))
@@ -117,6 +118,10 @@
  * COMMON *
  **********/
 
+/* DMA structures should be cache aligned and be padded so that their size
+ * is a multiple of a cache line size. Otherwise some nasty side effects
+ * could occur with adjacents data fields.
+ * The same apply to DMA buffers for the same reasons */
 struct apb_dma_command_t
 {
     struct apb_dma_command_t *next;
@@ -160,6 +165,7 @@ struct imx233_dma_info_t
 #define APB_AUDIO_ADC       APBX_DMA_CHANNEL(HW_APBX_AUDIO_ADC)
 #define APB_AUDIO_DAC       APBX_DMA_CHANNEL(HW_APBX_AUDIO_DAC)
 #define APB_I2C             APBX_DMA_CHANNEL(HW_APBX_I2C)
+#define APB_NAND(dev)       APBH_DMA_CHANNEL(HW_APBH_NAND(dev))
 
 #define HW_APB_CHx_CMD__COMMAND_BM         0x3
 #define HW_APB_CHx_CMD__COMMAND__NO_XFER   0

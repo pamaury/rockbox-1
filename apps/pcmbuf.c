@@ -40,23 +40,30 @@
 #include "settings.h"
 #include "audio.h"
 #include "voice_thread.h"
-#include "dsp.h"
+#include "dsp_core.h"
 
 /* This is the target fill size of chunks on the pcm buffer
    Can be any number of samples but power of two sizes make for faster and
    smaller math - must be < 65536 bytes */
 #define PCMBUF_CHUNK_SIZE    8192u
 
-/* Massive size is a nasty temp fix */
-#define PCMBUF_GUARD_SIZE    (1024u*12*((NATIVE_FREQUENCY+7999)/8000))
+/* Small guard buf to give decent space near end */
+#define PCMBUF_GUARD_SIZE    (PCMBUF_CHUNK_SIZE / 8)
 
 /* Mnemonics for common data commit thresholds */
 #define COMMIT_CHUNKS        PCMBUF_CHUNK_SIZE
 #define COMMIT_ALL_DATA      1u
 
- /* Size of the crossfade buffer where codec data is written to be faded
-    on commit */
-#define CROSSFADE_BUFSIZE    8192u
+/* Size of the crossfade buffer where codec data is written to be faded
+   on commit */
+#define CROSSFADE_BUFSIZE    PCMBUF_CHUNK_SIZE
+
+/* Maximum contiguous space that PCM buffer will allow (to avoid excessive
+   draining between inserts and observe low-latency mode) */
+#define PCMBUF_MAX_BUFFER    (PCMBUF_CHUNK_SIZE * 4)
+
+/* Forced buffer insert constraint can thus be from 1KB to 32KB using 8KB
+   chunks */
 
 /* Return data level in 1/4-second increments */
 #define DATA_LEVEL(quarter_secs) (NATIVE_FREQUENCY * (quarter_secs))
@@ -91,8 +98,8 @@ struct chunkdesc
 /* General PCM buffer data */
 #define INVALID_BUF_INDEX   ((size_t)0 - (size_t)1)
 
-static unsigned char *pcmbuf_buffer;
-static unsigned char *pcmbuf_guardbuf;
+static void *pcmbuf_buffer;
+static void *pcmbuf_guardbuf;
 static size_t pcmbuf_size;
 static struct chunkdesc *pcmbuf_descriptors;
 static unsigned int pcmbuf_desc_count;
@@ -126,7 +133,7 @@ static bool soft_mode = false;
 
 #ifdef HAVE_CROSSFADE
 /* Crossfade buffer */
-static unsigned char *crossfade_buffer;
+static void *crossfade_buffer;
 
 /* Crossfade related state */
 static int  crossfade_setting;
@@ -383,7 +390,11 @@ void * pcmbuf_request_buffer(int *count)
     /* If crossfade has begun, put the new track samples in crossfade_buffer */
     if (crossfade_status != CROSSFADE_INACTIVE && size > CROSSFADE_BUFSIZE)
         size = CROSSFADE_BUFSIZE;
-#endif
+    else
+#endif /* HAVE_CROSSFADE */
+
+    if (size > PCMBUF_MAX_BUFFER)
+        size = PCMBUF_MAX_BUFFER; /* constrain */
 
     enum channel_status status = mixer_channel_status(PCM_MIXER_CHAN_PLAYBACK);
     size_t remaining = pcmbuf_unplayed_bytes();
@@ -432,11 +443,22 @@ void * pcmbuf_request_buffer(int *count)
             pcmbuf_play_start();
     }
 
-    void *buf =
+    void *buf;
+
 #ifdef HAVE_CROSSFADE
-        crossfade_status != CROSSFADE_INACTIVE ? crossfade_buffer :
+    if (crossfade_status != CROSSFADE_INACTIVE)
+    {
+        buf = crossfade_buffer; /* always CROSSFADE_BUFSIZE */
+    }
+    else
 #endif
-        get_write_buffer(&size);
+    {
+        /* Give the maximum amount available if there's more */
+        if (size + PCMBUF_CHUNK_SIZE < freespace)
+            size = freespace - PCMBUF_CHUNK_SIZE;
+
+        buf = get_write_buffer(&size);
+    }
 
     *count = size / 4;
     return buf;
@@ -496,9 +518,9 @@ static void init_buffer_state(void)
 
 /* Initialize the PCM buffer. The structure looks like this:
  * ...[|FADEBUF]|---------PCMBUF---------|GUARDBUF|DESCS| */
-size_t pcmbuf_init(unsigned char *bufend)
+size_t pcmbuf_init(void *bufend)
 {
-    unsigned char *bufstart;
+    void *bufstart;
 
     /* Set up the buffers */
     pcmbuf_desc_count = get_next_required_pcmbuf_chunks();
@@ -694,7 +716,7 @@ void pcmbuf_start_track_change(enum pcm_track_change_type type)
 /** Playback */
 
 /* PCM driver callback */
-static void pcmbuf_pcm_callback(unsigned char **start, size_t *size)
+static void pcmbuf_pcm_callback(const void **start, size_t *size)
 {
     /*- Process the chunk that just finished -*/
     size_t index = chunk_ridx;
@@ -831,8 +853,9 @@ static size_t crossfade_find_buftail(size_t buffer_rem, size_t buffer_need)
 }
 
 /* Returns the number of bytes _NOT_ mixed/faded */
-static int crossfade_mix_fade(int factor, size_t size, void *buf, size_t *out_index,
-                              unsigned long elapsed, off_t offset)
+static size_t crossfade_mix_fade(int factor, size_t size, void *buf,
+                                 size_t *out_index, unsigned long elapsed,
+                                 off_t offset)
 {
     if (size == 0)
         return 0;
@@ -843,7 +866,7 @@ static int crossfade_mix_fade(int factor, size_t size, void *buf, size_t *out_in
         return size;
 
     const int16_t *input_buf = buf;
-    int16_t *output_buf = (int16_t *)index_buffer(index);
+    int16_t *output_buf = index_buffer(index);
 
     while (size)
     {
@@ -911,7 +934,7 @@ static int crossfade_mix_fade(int factor, size_t size, void *buf, size_t *out_in
                 return size;
             }
 
-            output_buf = (int16_t *)index_buffer(index);
+            output_buf = index_buffer(index);
         }
     }
 
@@ -1041,7 +1064,7 @@ static void crossfade_start(void)
 /* Perform fade-in of new track */
 static void write_to_crossfade(size_t size, unsigned long elapsed, off_t offset)
 {
-    unsigned char *buf = crossfade_buffer;
+    void *buf = crossfade_buffer;
 
     if (crossfade_fade_in_rem)
     {
@@ -1071,7 +1094,7 @@ static void write_to_crossfade(size_t size, unsigned long elapsed, off_t offset)
 
         /* Fade remaining samples in place */
         int samples = fade_rem / 4;
-        int16_t *input_buf = (int16_t *)buf;
+        int16_t *input_buf = buf;
 
         while (samples--)
         {
@@ -1101,7 +1124,7 @@ static void write_to_crossfade(size_t size, unsigned long elapsed, off_t offset)
     while (size > 0)
     {
         size_t copy_n = size;
-        unsigned char *outbuf = get_write_buffer(&copy_n);
+        void *outbuf = get_write_buffer(&copy_n);
         memcpy(outbuf, buf, copy_n);
         commit_write_buffer(copy_n, elapsed, offset);
         buf += copy_n;
@@ -1275,6 +1298,23 @@ void pcmbuf_soft_mode(bool shhh)
 }
 
 
+/** Time and position */
+
+/* Return the current position key value */
+unsigned int pcmbuf_get_position_key(void)
+{
+    return position_key;
+}
+
+/* Set position updates to be synchronous and immediate in addition to during
+   PCM frames - cancelled upon first codec insert or upon stopping */
+void pcmbuf_sync_position_update(void)
+{
+    pcmbuf_sync_position = true;
+}
+
+
+
 /** Misc */
 
 bool pcmbuf_is_lowdata(void)
@@ -1290,17 +1330,4 @@ bool pcmbuf_is_lowdata(void)
 void pcmbuf_set_low_latency(bool state)
 {
     low_latency_mode = state;
-}
-
-/* Return the current position key value */
-unsigned int pcmbuf_get_position_key(void)
-{
-    return position_key;
-}
-
-/* Set position updates to be synchronous and immediate in addition to during
-   PCM frames - cancelled upon first codec insert or upon stopping */
-void pcmbuf_sync_position_update(void)
-{
-    pcmbuf_sync_position = true;
 }

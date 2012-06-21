@@ -113,7 +113,8 @@ buflib_init(struct buflib_context *ctx, void *buf, size_t size)
     ctx->alloc_end = bd_buf;
     ctx->compact = true;
 
-    BDEBUGF("buflib initialized with %d.%2d kiB", size / 1024, (size%1000)/10);
+    BDEBUGF("buflib initialized with %lu.%2lu kiB",
+            (unsigned long)size / 1024, ((unsigned long)size%1000)/10);
 }
 
 /* Allocate a new handle, returning 0 on failure */
@@ -203,30 +204,42 @@ move_block(struct buflib_context* ctx, union buflib_data* block, int shift)
 
     int handle = ctx->handle_table - tmp;
     BDEBUGF("%s(): moving \"%s\"(id=%d) by %d(%d)\n", __func__, block[3].name,
-            handle, shift, shift*sizeof(union buflib_data));
+            handle, shift, shift*(int)sizeof(union buflib_data));
     new_block = block + shift;
     new_start = tmp->alloc + shift*sizeof(union buflib_data);
 
     /* disable IRQs to make accessing the buffer from interrupt context safe. */
     /* protect the move callback, as a cached global pointer might be updated
      * in it. and protect "tmp->alloc = new_start" for buflib_get_data() */
-    disable_irq();
     /* call the callback before moving */
-    if (ops)
+    if (ops && ops->sync_callback)
     {
-        if (ops->move_callback(handle, tmp->alloc, new_start)
-                == BUFLIB_CB_CANNOT_MOVE)
-        {
-            enable_irq();
-            return false;
-        }
+        ops->sync_callback(handle, true);
+    }
+    else
+    {
+        disable_irq();
     }
 
-    tmp->alloc = new_start; /* update handle table */
-    memmove(new_block, block, block->val * sizeof(union buflib_data));
+    bool retval = false;
+    if (!ops || ops->move_callback(handle, tmp->alloc, new_start)
+                    != BUFLIB_CB_CANNOT_MOVE)
+    {
+        tmp->alloc = new_start; /* update handle table */
+        memmove(new_block, block, block->val * sizeof(union buflib_data));
+        retval = true;
+    }
 
-    enable_irq();
-    return true;
+    if (ops && ops->sync_callback)
+    {
+        ops->sync_callback(handle, false);
+    }
+    else
+    {
+        enable_irq();
+    }
+
+    return retval;
 }
 
 /* Compact allocations and handle table, adjusting handle pointers as needed.

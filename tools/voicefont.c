@@ -33,11 +33,9 @@
 
 /* endian conversion macros */
 #if defined(__BIG_ENDIAN__)
-#define SWAP2(x) (x)
-#define SWAP4(x) (x)
+#define UINT_TO_BE(x) (x)
 #else
-#define SWAP2(x) ((((unsigned)(x)>>8) & 0x00ff) | (((unsigned)(x)<<8) & 0xff00))
-#define SWAP4(x) ((((unsigned)(x)>>24) & 0x000000ff) |\
+#define UINT_TO_BE(x) ((((unsigned)(x)>>24) & 0x000000ff) |\
                   (((unsigned)(x)>>8)  & 0x0000ff00) |\
                   (((unsigned)(x)<<8)  & 0x00ff0000) |\
                   (((unsigned)(x)<<24) & 0xff000000))
@@ -72,11 +70,11 @@ int BitswapAudio (unsigned char* pDest, unsigned char* pSrc, size_t len)
     return 0;
 }
 
-int voicefont(FILE* voicefontids,int targetnum,char* filedir, FILE* output)
+int voicefont(FILE* voicefontids,int targetnum,char* filedir, FILE* output, unsigned int version)
 {
-    
+
     int i,j;
-    
+
     /* two tables, one for normal strings, one for voice-only (>0x8000) */
     static char names[1000][80]; /* worst-case space */
     char name[80]; /* one string ID */
@@ -93,15 +91,13 @@ int voicefont(FILE* voicefontids,int targetnum,char* filedir, FILE* output)
     char mp3filename2[1024];
     char* mp3filename;
     FILE* pMp3File;
-    int target_id;
     int do_bitswap_audio = 0;
 
-    
+
     /* We bitswap the voice file only SH based archos players, target IDs
-         equal to or lower than 8. See the target_id line for each target in
-         configure */
-    target_id = targetnum;
-    if (target_id <= 8)
+       equal to or lower than 8. See the "Target id:" line in rockbox-info.txt
+       or the target_id value in configure. */
+    if (targetnum <= 8)
         do_bitswap_audio = 1;
 
     memset(voiceonly, 0, sizeof(voiceonly));
@@ -114,10 +110,13 @@ int voicefont(FILE* voicefontids,int targetnum,char* filedir, FILE* output)
         fields = sscanf(line, " id: %s", name);
         if (fields == 1)
         {
-            count++; /* next entry started */
-            strcpy(names[count-1], name);
+            strcpy(names[count], name);
             if (strncmp("VOICE_", name, 6) == 0) /* voice-only id? */
-                voiceonly[count-1] = 1;
+            {
+                count_voiceonly++;
+                voiceonly[count] = 1;
+            }
+            count++; /* next entry started */
             continue;
         }
     }
@@ -127,9 +126,6 @@ int voicefont(FILE* voicefontids,int targetnum,char* filedir, FILE* output)
 
     for (i=0; i<count; i++)
     {
-        if (voiceonly[i] == 1)
-            count_voiceonly++;
-        
         pos[i] = ftell(output);
         sprintf(mp3filename1, "%s%s.mp3", filedir, names[i]);
         sprintf(mp3filename2, "%s%s.wav.mp3", filedir, names[i]);
@@ -146,7 +142,7 @@ int voicefont(FILE* voicefontids,int targetnum,char* filedir, FILE* output)
                 continue;
             }
         }
-        printf("processing %s\n", mp3filename);
+        printf("processing %s", mp3filename);
 
         size[i] = fread(buffer, 1, sizeof(buffer), pMp3File);
         fclose(pMp3File);
@@ -154,7 +150,7 @@ int voicefont(FILE* voicefontids,int targetnum,char* filedir, FILE* output)
             BitswapAudio(buffer, buffer, size[i]);
         fwrite(buffer, 1, size[i], output);
 
-        printf("%d %s %d\n", i, names[i], size[i]); /* debug */
+        printf(": %d %s %d\n", i, names[i], size[i]); /* debug */
     } /*  for i */
 
 
@@ -163,24 +159,24 @@ int voicefont(FILE* voicefontids,int targetnum,char* filedir, FILE* output)
     /* Create the file format: */
 
     /* 1st 32 bit value in the file is the version number    */
-    value = SWAP4(400); /* 4.00 */
+    value = UINT_TO_BE(version);
     fwrite(&value, sizeof(value), 1, output);
 
     /* 2nd 32 bit value in the file is the id number for the target
        we made the voce file for */
-    value = SWAP4(targetnum);
+    value = UINT_TO_BE(targetnum);
     fwrite(&value, sizeof(value), 1, output);
 
     /* 3rd 32 bit value in the file is the header size (= 1st table position) */
-    value = SWAP4(HEADER_SIZE); /* version, target id, header size, number1, number2 */
+    value = UINT_TO_BE(HEADER_SIZE); /* version, target id, header size, number1, number2 */
     fwrite(&value, sizeof(value), 1, output);
 
     /* 4th 32 bit value in the file is the number of clips in 1st table   */
-    value = SWAP4(count-count_voiceonly);
+    value = UINT_TO_BE(count-count_voiceonly);
     fwrite(&value, sizeof(value), 1, output);
 
     /* 5th bit value in the file is the number of clips in 2nd table */
-    value = SWAP4(count_voiceonly);
+    value = UINT_TO_BE(count_voiceonly);
     fwrite(&value, sizeof(value), 1, output);
 
     /* then followed by offset/size pairs for each clip */
@@ -199,9 +195,9 @@ int voicefont(FILE* voicefontids,int targetnum,char* filedir, FILE* output)
                     continue;
             }
 
-            value = SWAP4(pos[i]); /* position */
+            value = UINT_TO_BE(pos[i]); /* position */
             fwrite(&value, sizeof(value), 1,output);
-            value = SWAP4(size[i]); /* size */
+            value = UINT_TO_BE(size[i]); /* size */
             fwrite(&value, sizeof(value), 1, output);
         } /* for i */
     } /* for j */
@@ -247,7 +243,7 @@ int main (int argc, char** argv)
         return -2;
     }
     
-    voicefont(ids, atoi(argv[2]),argv[3],output);
+    voicefont(ids, atoi(argv[2]),argv[3],output, 400);
     return 0;
 }
 #endif

@@ -36,6 +36,8 @@
 static bool storage_spinning = false;
 
 #if CONFIG_CODEC != SWCODEC
+#include "mp3_playback.h"
+
 void audio_set_buffer_margin(int seconds)
 {
      (void)seconds;
@@ -92,9 +94,8 @@ unsigned char* mp3_get_pos(void)
     return NULL;
 }
 
-void mp3_play_data(const unsigned char* start, int size,
-    void (*get_more)(unsigned char** start, size_t* size) /* callback fn */
-)
+void mp3_play_data(const void* start, size_t size,
+                   mp3_play_callback_t get_more)
 {
     (void)start; (void)size; (void)get_more;
 }
@@ -188,8 +189,14 @@ int storage_write_sectors(IF_MV2(int drive,)
         sprintf(name,"sector%lX.bin",start+i);
         f=fopen(name,"wb");
         if (f) {
-            (void)fwrite(buf,512,1,f);
+            if(fwrite(buf,512,1,f) != 1) {
+                fclose(f);
+                return -1;
+            }
             fclose(f);
+        }
+        else {
+            return -1;
         }
     }
     return 0;
@@ -214,7 +221,7 @@ int storage_read_sectors(IF_MV2(int drive,)
         if (f) {
             ret = fread(buf,512,1,f);
             fclose(f);
-            if (ret != 512)
+            if (ret != 1)
                 return -1;
         }
     }

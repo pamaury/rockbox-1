@@ -683,7 +683,7 @@ int bpm_step_counter = 0;
 #define MET_IS_PLAYING rb->mp3_is_playing()
 #define MET_PLAY_STOP rb->mp3_play_stop()
 
-static void callback(unsigned char** start, size_t* size)
+static void callback(const void** start, size_t* size)
 {
     (void)start; /* unused parameter, avoid warning */
     *size = 0; /* end of data */
@@ -721,7 +721,7 @@ static void prepare_tock(void)
 
 static void play_tock(void)
 {
-    rb->pcm_play_data(NULL,(unsigned char *)sndbuf,sizeof(sndbuf));
+    rb->pcm_play_data(NULL, NULL, sndbuf, sizeof(sndbuf));
 }
 
 #endif /* CONFIG_CODEC != SWCODEC */

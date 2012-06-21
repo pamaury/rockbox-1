@@ -18,7 +18,7 @@ PDBOX_OBJ := $(call c2obj, $(PDBOX_SRC))
 # add source files to OTHERSRC to get automatic dependencies
 OTHER_SRC += $(PDBOX_SRC)
 
-$(PDBOXBUILDDIR)/pdbox.rock: $(PDBOX_OBJ) $(MPEG_OBJ) $(CODECDIR)/libtlsf.a
+$(PDBOXBUILDDIR)/pdbox.rock: $(PDBOX_OBJ) $(MPEG_OBJ)
 
 PDBOXFLAGS = $(PLUGINFLAGS) -fno-strict-aliasing
 PDBOXLDFLAGS = $(PLUGINLDFLAGS) 
@@ -36,10 +36,6 @@ $(PDBOXBUILDDIR)/pdbox.rock:
 		$(filter %.o, $^) \
 		$(filter %.a, $+) \
 		-lgcc $(PDBOXLDFLAGS)
-ifdef APP_TYPE
-	$(SILENT)cp $*.elf $@
-else
-	$(SILENT)$(OC) -O binary $*.elf $@
-endif
+	$(SILENT)$(call objcopy,$*.elf,$@)
 
 

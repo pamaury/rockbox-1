@@ -27,6 +27,7 @@ extern "C"
 {
 #endif
 
+#define MAX_TAG_LENGTH 4 /* includes the \0 */
 #define MAX_TAG_PARAMS 12
 
 #define NOBREAK 0x1 /* Flag to tell the renderer not to insert a line break */
@@ -73,6 +74,8 @@ enum skin_token_type {
     
     /* Conditional */
     SKIN_TOKEN_LOGICAL_IF,
+    SKIN_TOKEN_LOGICAL_AND,
+    SKIN_TOKEN_LOGICAL_OR,
     SKIN_TOKEN_CONDITIONAL,
     SKIN_TOKEN_CONDITIONAL_START,
     SKIN_TOKEN_CONDITIONAL_OPTION,
@@ -89,7 +92,8 @@ enum skin_token_type {
     SKIN_TOKEN_VIEWPORT_BGCOLOUR,
     SKIN_TOKEN_VIEWPORT_TEXTSTYLE,
     SKIN_TOKEN_VIEWPORT_GRADIENT_SETUP,
-    
+    SKIN_TOKEN_VIEWPORT_DRAWONBG,
+
     /* Battery */
     SKIN_TOKEN_BATTERY_PERCENT,
     SKIN_TOKEN_BATTERY_PERCENTBAR,
@@ -216,6 +220,8 @@ enum skin_token_type {
     SKIN_TOKEN_LIST_SELECTED_ITEM_CFG,
     SKIN_TOKEN_LIST_ITEM_IS_SELECTED,
     SKIN_TOKEN_LIST_ITEM_TEXT,
+    SKIN_TOKEN_LIST_ITEM_ROW,
+    SKIN_TOKEN_LIST_ITEM_COLUMN,
     SKIN_TOKEN_LIST_ITEM_NUMBER,
     SKIN_TOKEN_LIST_ITEM_ICON,
     SKIN_TOKEN_LIST_NEEDS_SCROLLBAR,
@@ -282,6 +288,8 @@ enum skin_token_type {
     SKIN_TOKEN_VAR_TIMEOUT,
 
     SKIN_TOKEN_SUBSTRING,
+
+    SKIN_TOKEN_DRAWRECTANGLE,
 };
 
 /*
@@ -301,7 +309,7 @@ enum skin_token_type {
  *             f - Nullable file name
  *             C - Required skin code
  *             T - Required single skin tag
- *             N - any amount of strings.. must be the last param in the list
+ *             * - Any amonut of the previous tag (or group if after a []
  *             \n - causes the parser to eat everything up to and including the \n
  *                  MUST be the last character of the prams string
  *          Any nullable parameter may be replaced in the WPS file
@@ -315,7 +323,7 @@ enum skin_token_type {
  *          To specify multiple instances of the same type, put a 
  *          number before the character.  For instance, the string...
  *             2s
- *          will specify two strings.  An asterisk (*) at the beginning of the
+ *          will specify two strings.  A ? at the beginning of the
  *          string will specify that you may choose to omit all arguments
  * 
  *          You may also group param types in [] which will tell the parser to 

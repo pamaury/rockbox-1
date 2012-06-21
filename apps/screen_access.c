@@ -262,6 +262,12 @@ struct screen screens[NB_SCREENS] =
 #ifdef HAVE_BUTTONBAR
         .has_buttonbar=false,
 #endif
+#if defined(HAVE_LCD_BITMAP)
+        .set_framebuffer = (void*)lcd_set_framebuffer,
+#if defined(HAVE_LCD_COLOR)    
+        .gradient_fillrect = lcd_gradient_fillrect,
+#endif
+#endif
     },
 #if NB_SCREENS == 2
     {
@@ -356,6 +362,9 @@ struct screen screens[NB_SCREENS] =
 #endif
 #ifdef HAVE_BUTTONBAR
         .has_buttonbar=false,
+#endif
+#if defined(HAVE_LCD_BITMAP)
+        .set_framebuffer = (void*)lcd_remote_set_framebuffer,
 #endif
     }
 #endif /* NB_SCREENS == 2 */

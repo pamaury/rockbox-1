@@ -127,6 +127,16 @@
 #define FM_MODE
 #define FM_STOP
 
+#elif (CONFIG_KEYPAD == SAMSUNG_YPR0_PAD)
+#define FM_MENU
+#define FM_PRESET
+#define FM_STOP
+#define FM_MODE
+#define FM_EXIT
+#define FM_PLAY
+#define FM_PREV_PRESET
+#define FM_NEXT_PRESET
+
 #endif
 
 /* presets.c needs these so keep unstatic or redo the whole thing! */
@@ -192,9 +202,6 @@ void radio_start(void)
     /* clear flag before any yielding */
     radio_status &= ~FMRADIO_START_PAUSED;
 
-    if(radio_status == FMRADIO_OFF)
-        tuner_power(true);
-
     curr_freq = global_status.last_frequency * fmr->freq_step + fmr->freq_min;
 
     tuner_set(RADIO_SLEEP, 0); /* wake up the tuner */
@@ -246,9 +253,6 @@ void radio_pause(void)
     }
 
     tuner_set(RADIO_MUTE, 1);
-    /* For si4700: 2==this is really 'pause'. other tuners treat it
-     * like 'bool'. */
-    tuner_set(RADIO_SLEEP, 2);
 
     radio_status = FMRADIO_PAUSED;
 } /* radio_pause */
@@ -258,7 +262,6 @@ static void radio_off(void)
     tuner_set(RADIO_MUTE, 1);
     tuner_set(RADIO_SLEEP, 1); /* low power mode, if available */
     radio_status = FMRADIO_OFF;
-    tuner_power(false); /* status update, power off if avail. */
 }
 
 void radio_stop(void)

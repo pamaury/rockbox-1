@@ -16,11 +16,13 @@
  *
  ****************************************************************************/
 
+#include <QtCore>
 #include "voicefile.h"
 #include "utils.h"
 #include "rockboxinfo.h"
 #include "rbsettings.h"
 #include "systeminfo.h"
+#include "ziputil.h"
 
 VoiceFileCreator::VoiceFileCreator(QObject* parent) :QObject(parent)
 {
@@ -54,26 +56,109 @@ bool VoiceFileCreator::createVoiceFile()
         emit done(true);
         return false;
     }
-
     QString target = info.target();
     QString features = info.features();
-    QString version = info.version();
     m_targetid = info.targetID().toInt();
-    version = version.left(version.indexOf("-")).remove("r");
- 
-    //prepare download url
+    m_versionstring = info.version();
+    m_voiceformat = info.voicefmt();
+    QString version = m_versionstring.left(m_versionstring.indexOf("-")).remove("r");
+
+    // check if voicefile is present on target
+    QString fn = m_mountpoint + "/.rockbox/langs/voicestrings.zip";
+    qDebug() << "[VoiceFile] searching for zipped voicestrings at" << fn;
+    if(QFileInfo(fn).isFile()) {
+        // search for binary voice strings file in archive
+        ZipUtil z(this);
+        if(z.open(fn)) {
+            QStringList contents = z.files();
+            int index;
+            for(index = 0; index < contents.size(); ++index) {
+                // strip any path, we don't know the structure in the zip
+                if(QFileInfo(contents.at(index)).baseName() == m_lang) {
+                    break;
+                }
+            }
+            if(index < contents.size()) {
+                qDebug() << "[VoiceFile] extracting strings file from zip";
+                // extract strings
+                QTemporaryFile stringsfile;
+                stringsfile.open();
+                QString sfn = stringsfile.fileName();
+                // ZipUtil::extractArchive() only compares the filename.
+                if(z.extractArchive(sfn, QFileInfo(contents.at(index)).fileName())) {
+                    emit logItem(tr("Extracted voice strings from installation"), LOGINFO);
+
+                    stringsfile.seek(0);
+                    QByteArray data = stringsfile.readAll();
+                    const char* buf = data.constData();
+                    // check file header
+                    // header (4 bytes): cookie = 9a, version = 06, targetid, options
+                    // subheader for each user. Only "core" for now.
+                    // subheader (6 bytes): count (2bytes), size (2bytes), offset (2bytes)
+                    if(buf[0] != (char)0x9a || buf[1] != 0x06 || buf[2] != m_targetid) {
+                        emit logItem(tr("Extracted voice strings incompatible"), LOGINFO);
+                    }
+                    else {
+                        QMap<int, QString> voicestrings;
+
+                        /* skip header */
+                        int idx = 10;
+                        do {
+                            unsigned int id = ((unsigned char)buf[idx])<<8
+                                            | ((unsigned char)buf[idx+1]);
+                            // need to use strlen here, since QString::size()
+                            // returns number of characters, not bytes.
+                            int len = strlen(&buf[idx + 2]);
+                            voicestrings[id] = QString::fromUtf8(&buf[idx+2]);
+                            idx += 2 + len + 1;
+
+                        } while(idx < data.size());
+
+                        stringsfile.close();
+
+                        // create input file suitable for voicefont from strings.
+                        QTemporaryFile voicefontlist;
+                        voicefontlist.open();
+                        m_filename = voicefontlist.fileName();
+                        for(int i = 0; i < voicestrings.size(); ++i) {
+                            QByteArray qba;
+                            qba = QString("id: %1_%2\n")
+                                    .arg(voicestrings.keys().at(i) < 0x8000 ? "LANG" : "VOICE")
+                                    .arg(voicestrings.keys().at(i)).toUtf8();
+                            voicefontlist.write(qba);
+                            qba = QString("voice: \"%1\"\n").arg(
+                                    voicestrings[voicestrings.keys().at(i)]).toUtf8();
+                            voicefontlist.write(qba);
+                        }
+                        voicefontlist.close();
+
+                        // everything successful, now create the actual voice file.
+                        create();
+                        return true;
+                    }
+
+                }
+            }
+        }
+    }
+    emit logItem(tr("Could not retrieve strings from installation, downloading"), LOGINFO);
+    // if either no zip with voice strings is found or something went wrong
+    // retrieving the necessary files we'll end up here, trying to get the
+    // genlang output as previously from the webserver.
+
+    // prepare download url
     QString genlang = SystemInfo::value(SystemInfo::GenlangUrl).toString();
     genlang.replace("%LANG%", m_lang);
     genlang.replace("%TARGET%", target);
     genlang.replace("%REVISION%", version);
     genlang.replace("%FEATURES%", features);
     QUrl genlangUrl(genlang);
-    qDebug() << "[VoiceFileCreator] downloading " << genlangUrl;
+    qDebug() << "[VoiceFileCreator] downloading" << genlangUrl;
 
     //download the correct genlang output
     QTemporaryFile *downloadFile = new QTemporaryFile(this);
     downloadFile->open();
-    filename = downloadFile->fileName();
+    m_filename = downloadFile->fileName();
     downloadFile->close();
     // get the real file.
     getter = new HttpGet(this);
@@ -95,12 +180,13 @@ void VoiceFileCreator::downloadDone(bool error)
     // update progress bar
     emit logProgress(1,1);
     if(getter->httpResponse() != 200 && !getter->isCached()) {
-        emit logItem(tr("Download error: received HTTP error %1.").arg(getter->httpResponse()),LOGERROR);
+        emit logItem(tr("Download error: received HTTP error %1.")
+                .arg(getter->httpResponse()),LOGERROR);
         emit done(true);
         return;
     }
-    
-    if(getter->isCached()) 
+
+    if(getter->isCached())
         emit logItem(tr("Cached file used."), LOGINFO);
     if(error)
     {
@@ -108,21 +194,24 @@ void VoiceFileCreator::downloadDone(bool error)
         emit done(true);
         return;
     }
-    else 
+    else
         emit logItem(tr("Download finished."),LOGINFO);
-    
-    QCoreApplication::processEvents();
 
+    QCoreApplication::processEvents();
+    create();
+}
+
+
+void VoiceFileCreator::create(void)
+{
     //open downloaded file
-    QFile genlang(filename);
+    QFile genlang(m_filename);
     if(!genlang.open(QIODevice::ReadOnly))
     {
         emit logItem(tr("failed to open downloaded file"),LOGERROR);
         emit done(true);
         return;
     }
-
-    QCoreApplication::processEvents();
 
     //read in downloaded file
     emit logItem(tr("Reading strings..."),LOGINFO);
@@ -143,6 +232,7 @@ void VoiceFileCreator::downloadDone(bool error)
         else if(line.contains("voice:"))  // voice found
         {
             voice = line.remove("voice:").remove('"').trimmed();
+            voice = voice.remove("<").remove(">");
             voicefound=true;
         }
 
@@ -160,8 +250,14 @@ void VoiceFileCreator::downloadDone(bool error)
                 QFile::copy(":/builtin/VOICE_PAUSE.wav",m_path + "/VOICE_PAUSE.wav");
                 entry.wavfilename = m_path + "/VOICE_PAUSE.wav";
                 entry.voiced = true;
+                m_talkList.append(entry);
             }
-            m_talkList.append(entry);
+            else if(entry.toSpeak.isEmpty()) {
+                qDebug() << "[Voicefile] Empty voice string for ID" << id;
+            }
+            else {
+                m_talkList.append(entry);
+            }
             idfound=false;
             voicefound=false;
         }
@@ -186,7 +282,7 @@ void VoiceFileCreator::downloadDone(bool error)
         connect(&generator,SIGNAL(logItem(QString,int)),this,SIGNAL(logItem(QString,int)));
         connect(&generator,SIGNAL(logProgress(int,int)),this,SIGNAL(logProgress(int,int)));
         connect(this,SIGNAL(aborted()),&generator,SLOT(abort()));
-    
+
         if(generator.process(&m_talkList, m_wavtrimThreshold) == TalkGenerator::eERROR)
         {
             cleanup();
@@ -195,10 +291,10 @@ void VoiceFileCreator::downloadDone(bool error)
             return;
         }
     }
-    
+
     //make voicefile
     emit logItem(tr("Creating voicefiles..."),LOGINFO);
-    FILE* ids2 = fopen(filename.toLocal8Bit(), "r");
+    FILE* ids2 = fopen(m_filename.toLocal8Bit(), "r");
     if (ids2 == NULL)
     {
         cleanup();
@@ -218,7 +314,8 @@ void VoiceFileCreator::downloadDone(bool error)
         return;
     }
 
-    voicefont(ids2,m_targetid,m_path.toLocal8Bit().data(), output);
+    qDebug() << "[VoiceFile] Running voicefont, format" << m_voiceformat;
+    voicefont(ids2,m_targetid,m_path.toLocal8Bit().data(), output, m_voiceformat);
     // ids2 and output are closed by voicefont().
 
     //cleanup
@@ -226,15 +323,14 @@ void VoiceFileCreator::downloadDone(bool error)
 
     // Add Voice file to the install log
     QSettings installlog(m_mountpoint + "/.rockbox/rbutil.log", QSettings::IniFormat, 0);
-    installlog.beginGroup("selfcreated Voice");
-    installlog.setValue("/.rockbox/langs/" + m_lang + ".voice",
-            QDate::currentDate().toString("yyyyMMdd"));
+    installlog.beginGroup(QString("Voice (self created, %1)").arg(m_lang));
+    installlog.setValue("/.rockbox/langs/" + m_lang + ".voice", m_versionstring);
     installlog.endGroup();
     installlog.sync();
 
     emit logProgress(1,1);
     emit logItem(tr("successfully created."),LOGOK);
-    
+
     emit done(false);
 }
 

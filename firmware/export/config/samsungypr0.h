@@ -43,26 +43,16 @@
 /* define this if you have access to the quickscreen */
 #define HAVE_QUICKSCREEN
 
-/* define this if you have access to the pitchscreen */
-#define HAVE_PITCHSCREEN
-
 /* define this if you would like tagcache to build on this target */
 #define HAVE_TAGCACHE
 
-/* LCD dimensions
- *
- * overriden by configure for application builds */
-#ifndef LCD_WIDTH
+/* LCD dimensions */
 #define LCD_WIDTH  240
-#endif
-
-#ifndef LCD_HEIGHT
 #define LCD_HEIGHT 320
-#endif
 
 #define LCD_DEPTH  16
 /* Check that but should not matter */
-#define LCD_PIXELFORMAT 565
+#define LCD_PIXELFORMAT RGB565
 
 /* YP-R0 has the backlight */
 #define HAVE_BACKLIGHT
@@ -85,7 +75,6 @@
 //#define HAVE_RTC_RAM
 
 /* define this if you have a real-time clock */
-//#define CONFIG_RTC APPLICATION
 #define CONFIG_RTC RTC_AS3514
 #define HAVE_RTC_ALARM
 
@@ -113,9 +102,17 @@
 
 #define HAVE_SW_TONE_CONTROLS
 
-/* TODO: Make use of the si4703 tuner hardware */
-/* #define CONFIG_TUNER SI4700 */
-/* #define HAVE_TUNER_PWR_CTRL*/
+#define CONFIG_TUNER SI4700
+#define HAVE_TUNER_PWR_CTRL
+
+/* TODO: next step: enable RDS
+#define HAVE_RDS_CAP
+#define RDS_ISR_PROCESSING
+*/
+
+/* Define this for FM radio input available */
+#define HAVE_FMRADIO_IN
+#define INPUT_SRC_CAPS SRC_CAP_FMRADIO
 
 /* We have a GPIO that detects it */
 #define HAVE_HEADPHONE_DETECTION

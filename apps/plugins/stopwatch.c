@@ -271,6 +271,15 @@
 #define STOPWATCH_SCROLL_UP BUTTON_UP
 #define STOPWATCH_SCROLL_DOWN BUTTON_DOWN
 
+#elif (CONFIG_KEYPAD == HM60X_PAD) || \
+    (CONFIG_KEYPAD == HM801_PAD)
+#define STOPWATCH_QUIT BUTTON_POWER
+#define STOPWATCH_START_STOP BUTTON_SELECT
+#define STOPWATCH_RESET_TIMER BUTTON_LEFT
+#define STOPWATCH_LAP_TIMER BUTTON_RIGHT
+#define STOPWATCH_SCROLL_UP BUTTON_UP
+#define STOPWATCH_SCROLL_DOWN BUTTON_DOWN
+
 #else
 #error No keymap defined!
 #endif
@@ -530,9 +539,19 @@ enum plugin_status plugin_start(const void* parameter)
 
             /* Lap timer */
             case STOPWATCH_LAP_TIMER:
-                 lap_times[curr_lap%MAX_LAPS] = stopwatch;
-                 curr_lap++;
-                 update_lap = true;
+                 /*check if we're timing, and start if not*/
+                 if (counting)
+                 {
+                     lap_times[curr_lap%MAX_LAPS] = stopwatch;
+                     curr_lap++;
+                     update_lap = true;
+                 }
+                 else
+                 {
+                     counting = ! counting;
+                     start_at = *rb->current_tick;
+                     stopwatch = prev_total + *rb->current_tick - start_at;
+                 }
                  break;
 
             /* Scroll Lap timer up */

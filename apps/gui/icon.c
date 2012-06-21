@@ -175,7 +175,7 @@ static int buflib_move_callback(int handle, void* current, void* new)
     }
     return BUFLIB_CB_OK;
 }
-static struct buflib_callbacks buflib_ops = {buflib_move_callback, NULL};
+static struct buflib_callbacks buflib_ops = {buflib_move_callback, NULL, NULL};
 
 static void load_icons(const char* filename, enum Iconset iconset,
                         enum screen_type screen)
@@ -197,7 +197,7 @@ static void load_icons(const char* filename, enum Iconset iconset,
         size_t buf_size = read_bmp_fd(fd, &ic->bmp, 0, 
                                         bmpformat|FORMAT_RETURN_SIZE, NULL);
         ic->handle = core_alloc_ex(filename, buf_size, &buflib_ops);
-        if (ic->handle < 0)
+        if (ic->handle <= 0)
         {
             close(fd);
             return;

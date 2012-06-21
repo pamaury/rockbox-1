@@ -740,6 +740,7 @@ static int sd_setcmp(int regval)
 
 static void set_sleep(bool sleep)
 {
+    tuner_power(!sleep);
     if (sleep || tuner_awake())
         return;
 

@@ -31,10 +31,10 @@
 #include "sound_menu.h"
 #include "kernel.h"
 #include "playlist.h"
-#include "dsp.h"
 #include "scrobbler.h"
 #include "audio.h"
 #include "cuesheet.h"
+#include "misc.h"
 #if CONFIG_CODEC == SWCODEC
 #include "playback.h"
 #endif
@@ -117,14 +117,20 @@ static int replaygain_callback(int action,const struct menu_item_ex *this_item)
     switch (action)
     {
         case ACTION_EXIT_MENUITEM: /* on exit */    
-            dsp_set_replaygain();
+            replaygain_update();
             break;
     }
     return action;
 }
-MENUITEM_SETTING(replaygain_noclip, &global_settings.replaygain_noclip ,replaygain_callback);
-MENUITEM_SETTING(replaygain_type, &global_settings.replaygain_type ,replaygain_callback);
-MENUITEM_SETTING(replaygain_preamp, &global_settings.replaygain_preamp ,replaygain_callback);
+MENUITEM_SETTING(replaygain_noclip,
+                 &global_settings.replaygain_settings.noclip,
+                 replaygain_callback);
+MENUITEM_SETTING(replaygain_type,
+                 &global_settings.replaygain_settings.type,
+                 replaygain_callback);
+MENUITEM_SETTING(replaygain_preamp,
+                 &global_settings.replaygain_settings.preamp,
+                 replaygain_callback);
 MAKE_MENU(replaygain_settings_menu,ID2P(LANG_REPLAYGAIN),0, Icon_NOICON,
           &replaygain_type, &replaygain_noclip, &replaygain_preamp);
           
@@ -135,6 +141,8 @@ MENUITEM_SETTING(beep, &global_settings.beep ,NULL);
 MENUITEM_SETTING(spdif_enable, &global_settings.spdif_enable, NULL);
 #endif
 MENUITEM_SETTING(next_folder, &global_settings.next_folder, NULL);
+MENUITEM_SETTING(constrain_next_folder,
+                 &global_settings.constrain_next_folder, NULL);
 static int audioscrobbler_callback(int action,const struct menu_item_ex *this_item)
 {
     (void)this_item;
@@ -205,7 +213,7 @@ MAKE_MENU(playback_settings,ID2P(LANG_PLAYBACK),0,
 #ifdef HAVE_SPDIF_POWER
           &spdif_enable,
 #endif
-          &next_folder, &audioscrobbler, &cuesheet
+          &next_folder, &constrain_next_folder, &audioscrobbler, &cuesheet
 #ifdef HAVE_HEADPHONE_DETECTION
          ,&unplug_menu
 #endif
@@ -243,9 +251,8 @@ static int playback_callback(int action,const struct menu_item_ex *this_item)
                 if (old_shuffle == global_settings.playlist_shuffle)
                     break;
 
-#if CONFIG_CODEC == SWCODEC
-                dsp_set_replaygain();
-#endif
+                replaygain_update();
+
                 if (global_settings.playlist_shuffle)
                 {
                     playlist_randomise(NULL, current_tick, true);

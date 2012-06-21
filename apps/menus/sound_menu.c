@@ -34,7 +34,6 @@
 #include "menu_common.h"
 #include "splash.h"
 #include "kernel.h"
-#include "dsp.h"
 
 /***********************************/
 /*    SOUND MENU                   */
@@ -104,7 +103,7 @@ MENUITEM_SETTING(depth_3d, &global_settings.depth_3d, NULL);
               &crossfeed, &crossfeed_direct_gain, &crossfeed_cross_gain,
               &crossfeed_hf_attenuation, &crossfeed_hf_cutoff);
 
-#ifdef HAVE_PITCHSCREEN
+#ifdef HAVE_PITCHCONTROL
 static int timestretch_callback(int action,const struct menu_item_ex *this_item)
 {
     switch (action)
@@ -126,15 +125,20 @@ static int timestretch_callback(int action,const struct menu_item_ex *this_item)
 
     /* compressor submenu */
     MENUITEM_SETTING(compressor_threshold,
-                     &global_settings.compressor_threshold, lowlatency_callback);
+                     &global_settings.compressor_settings.threshold,
+                     lowlatency_callback);
     MENUITEM_SETTING(compressor_gain,
-                     &global_settings.compressor_makeup_gain, lowlatency_callback);
+                     &global_settings.compressor_settings.makeup_gain,
+                     lowlatency_callback);
     MENUITEM_SETTING(compressor_ratio,
-                     &global_settings.compressor_ratio, lowlatency_callback);
+                     &global_settings.compressor_settings.ratio,
+                     lowlatency_callback);
     MENUITEM_SETTING(compressor_knee,
-                     &global_settings.compressor_knee, lowlatency_callback);
+                     &global_settings.compressor_settings.knee,
+                     lowlatency_callback);
     MENUITEM_SETTING(compressor_release,
-                     &global_settings.compressor_release_time, lowlatency_callback);
+                     &global_settings.compressor_settings.release_time,
+                     lowlatency_callback);
     MAKE_MENU(compressor_menu,ID2P(LANG_COMPRESSOR), NULL, Icon_NOICON,
               &compressor_threshold, &compressor_gain, &compressor_ratio,
               &compressor_knee, &compressor_release);
@@ -181,7 +185,7 @@ MAKE_MENU(sound_settings, ID2P(LANG_SOUND_SETTINGS), NULL, Icon_Audio,
 #endif
 #if CONFIG_CODEC == SWCODEC
           ,&crossfeed_menu, &equalizer_menu, &dithering_enabled
-#ifdef HAVE_PITCHSCREEN
+#ifdef HAVE_PITCHCONTROL
           ,&timestretch_enabled
 #endif
           ,&compressor_menu

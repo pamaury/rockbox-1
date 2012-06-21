@@ -34,7 +34,7 @@
 
 
 #include "plugin.h"
-
+#include "lib/pluginlib_actions.h"
 
 /* Images */
 #include "pluginbitmaps/matrix_bold.h"
@@ -49,158 +49,23 @@
 #define LEFTMARGIN (LCD_WIDTH-(COLS*COL_W))/2
 #define TOPMARGIN  (LCD_HEIGHT-(ROWS*COL_H))/2
 
-#if (CONFIG_KEYPAD == IPOD_4G_PAD) || \
-      (CONFIG_KEYPAD == IPOD_3G_PAD) || \
-      (CONFIG_KEYPAD == IPOD_1G2G_PAD)
-#define MATRIX_EXIT BUTTON_MENU
-#define MATRIX_SLEEP_MORE BUTTON_SCROLL_BACK|BUTTON_REPEAT
-#define MATRIX_SLEEP_LESS BUTTON_SCROLL_FWD|BUTTON_REPEAT
-#define MATRIX_PAUSE BUTTON_PLAY
+/* this set the context to use with PLA */
+static const struct button_mapping *plugin_contexts[] = { pla_main_ctx };
 
-#elif (CONFIG_KEYPAD == IRIVER_H100_PAD) || \
-      (CONFIG_KEYPAD == IRIVER_H300_PAD)
-#define MATRIX_EXIT BUTTON_OFF
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_SELECT
-
-#elif (CONFIG_KEYPAD == IRIVER_H10_PAD)
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_SCROLL_UP|BUTTON_REPEAT
-#define MATRIX_SLEEP_LESS BUTTON_SCROLL_DOWN|BUTTON_REPEAT
-#define MATRIX_PAUSE BUTTON_PLAY
-
-#elif (CONFIG_KEYPAD == IAUDIO_X5M5_PAD)
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_PLAY
-
-#elif (CONFIG_KEYPAD == GIGABEAT_PAD)
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_SELECT
-
-#elif (CONFIG_KEYPAD == SANSA_E200_PAD) || \
-      (CONFIG_KEYPAD == SANSA_CONNECT_PAD)
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_SCROLL_BACK|BUTTON_REPEAT
-#define MATRIX_SLEEP_LESS BUTTON_SCROLL_FWD|BUTTON_REPEAT
-#define MATRIX_PAUSE BUTTON_SELECT
-
-#elif CONFIG_KEYPAD == SANSA_FUZE_PAD
-#define MATRIX_EXIT         (BUTTON_HOME|BUTTON_REPEAT)
-#define MATRIX_SLEEP_MORE   BUTTON_SCROLL_BACK|BUTTON_REPEAT
-#define MATRIX_SLEEP_LESS   BUTTON_SCROLL_FWD|BUTTON_REPEAT
-#define MATRIX_PAUSE        BUTTON_SELECT
-
-#elif CONFIG_KEYPAD == SANSA_C200_PAD
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_SELECT
-
-#elif (CONFIG_KEYPAD == GIGABEAT_S_PAD) || \
-      (CONFIG_KEYPAD == SAMSUNG_YPR0_PAD)
-#define MATRIX_EXIT BUTTON_BACK
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_SELECT
-
-#elif CONFIG_KEYPAD == IAUDIO_M3_PAD
-#define MATRIX_EXIT BUTTON_RC_REC
-#define MATRIX_SLEEP_MORE BUTTON_RC_VOL_UP
-#define MATRIX_SLEEP_LESS BUTTON_RC_VOL_DOWN
-#define MATRIX_PAUSE BUTTON_RC_PLAY
-
-#elif (CONFIG_KEYPAD == COWON_D2_PAD)
-#define MATRIX_EXIT BUTTON_POWER
-
-#elif CONFIG_KEYPAD == IAUDIO67_PAD
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_VOLUP
-#define MATRIX_SLEEP_LESS BUTTON_VOLDOWN
-#define MATRIX_PAUSE BUTTON_PLAY
-
-#elif CONFIG_KEYPAD == CREATIVEZVM_PAD
-#define MATRIX_EXIT BUTTON_BACK
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_PLAY
-
-#elif CONFIG_KEYPAD == PHILIPS_HDD1630_PAD
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_SELECT
-
-#elif (CONFIG_KEYPAD == PHILIPS_HDD6330_PAD) || \
-      (CONFIG_KEYPAD == PHILIPS_SA9200_PAD)
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_PLAY
-
-#elif (CONFIG_KEYPAD == ONDAVX747_PAD) || \
-CONFIG_KEYPAD == ONDAVX777_PAD || \
-CONFIG_KEYPAD == MROBE500_PAD
-#define MATRIX_EXIT BUTTON_POWER
-
-#elif CONFIG_KEYPAD == SAMSUNG_YH_PAD
-#define MATRIX_EXIT       BUTTON_REC
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE      BUTTON_PLAY
-
-#elif CONFIG_KEYPAD == PBELL_VIBE500_PAD
-#define MATRIX_EXIT       BUTTON_REC
-#define MATRIX_SLEEP_MORE BUTTON_PREV
-#define MATRIX_SLEEP_LESS BUTTON_NEXT
-#define MATRIX_PAUSE      BUTTON_PLAY
-
-#elif CONFIG_KEYPAD == MPIO_HD200_PAD
-#define MATRIX_EXIT (BUTTON_REC|BUTTON_PLAY)
-#define MATRIX_SLEEP_MORE BUTTON_VOL_UP
-#define MATRIX_SLEEP_LESS BUTTON_VOL_DOWN
-#define MATRIX_PAUSE BUTTON_PLAY
-
-#elif CONFIG_KEYPAD == MPIO_HD300_PAD
-#define MATRIX_EXIT (BUTTON_REC|BUTTON_REPEAT)
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_PLAY
-
-#elif CONFIG_KEYPAD == SANSA_FUZEPLUS_PAD
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_PLAYPAUSE
-
-#elif CONFIG_KEYPAD == SANSA_CLIP_PAD
-#define MATRIX_EXIT BUTTON_POWER
-#define MATRIX_SLEEP_MORE BUTTON_UP
-#define MATRIX_SLEEP_LESS BUTTON_DOWN
-#define MATRIX_PAUSE BUTTON_SELECT
-
+#ifdef HAVE_SCROLLWHEEL
+#define MATRIX_SLEEP_MORE          PLA_SCROLL_BACK
+#define MATRIX_SLEEP_MORE_REPEAT   PLA_SCROLL_BACK_REPEAT
+#define MATRIX_SLEEP_LESS          PLA_SCROLL_FWD
+#define MATRIX_SLEEP_LESS_REPEAT   PLA_SCROLL_FWD_REPEAT
 #else
-#error Unsupported keypad
-#endif
-
-#ifdef HAVE_TOUCHSCREEN
-#ifndef MATRIX_EXIT
-#define MATRIX_EXIT       BUTTON_TOPLEFT
-#endif
-#ifndef MATRIX_SLEEP_MORE
-#define MATRIX_SLEEP_MORE BUTTON_MIDRIGHT
-#endif
-#ifndef MATRIX_SLEEP_LESS
-#define MATRIX_SLEEP_LESS BUTTON_MIDLEFT
-#endif
-#ifndef MATRIX_PAUSE
-#define MATRIX_PAUSE      BUTTON_CENTER
-#endif
-#endif
+#define MATRIX_SLEEP_MORE          PLA_UP
+#define MATRIX_SLEEP_MORE_REPEAT   PLA_UP_REPEAT
+#define MATRIX_SLEEP_LESS          PLA_DOWN
+#define MATRIX_SLEEP_LESS_REPEAT   PLA_DOWN_REPEAT
+#endif /* HAVE_SCROLLWHEEL */
+#define MATRIX_PAUSE               PLA_SELECT
+#define MATRIX_EXIT                PLA_EXIT
+#define MATRIX_EXIT2               PLA_CANCEL
 
 #define SLEEP HZ/50
 
@@ -223,14 +88,14 @@ static void matrix_init(void) {
     rb->srand(*rb->current_tick);
 
     /* Make the matrix */
-    for (i = 0; i <= ROWS; i++) {
-        for (j = 0; j <= COLS - 1; j++ ) {
+    for (i = 0; i < ROWS; i++) {
+        for (j = 0; j < COLS; j++) {
             matrix[i][j].val = -1;
             matrix[i][j].bold = 0;
         }
     }
 
-    for (j = 0; j <= COLS - 1; j++) {
+    for (j = 0; j < COLS; j++) {
         /* Set up spaces[] array of how many spaces to skip */
         spaces[j] = rb->rand() % ROWS + 1;
 
@@ -274,7 +139,7 @@ static void matrix_loop(void)
     if (count > 4)
         count = 1;
 
-    for (j = 0; j <= COLS - 1; j++) {
+    for (j = 0; j < COLS; j++) {
         if (count > updates[j]) {
             /* New style scrolling */
             if (matrix[0][j].val == -1 && matrix[1][j].val == 129
@@ -352,7 +217,7 @@ static void matrix_loop(void)
                 firstcoldone = 1;
                 i++;
             }
-            for (i = 1; i <= ROWS; i++) {
+            for (i = 1; i < ROWS; i++) {
                 if (matrix[i][j].val == 0 || matrix[i][j].bold == 2) {
                     if (matrix[i][j].val == 0)
                         matrix_blit_char(i - 1, j, 20);
@@ -389,19 +254,25 @@ enum plugin_status plugin_start(const void* parameter) {
             rb->lcd_update();
             rb->sleep(sleep);
         }
-        button = rb->button_get(frozen);
+
+        button = pluginlib_getaction(frozen ? TIMEOUT_BLOCK : TIMEOUT_NOBLOCK,
+                        plugin_contexts, ARRAYLEN(plugin_contexts));
+
         switch(button) {
             case MATRIX_PAUSE:
                 frozen = !frozen;
                 break;
             case MATRIX_EXIT:
+            case MATRIX_EXIT2:
                 return PLUGIN_OK;
                 break;
             case MATRIX_SLEEP_MORE:
+            case MATRIX_SLEEP_MORE_REPEAT:
                 /* Sleep longer */
                 sleep += SLEEP;
                 break;
             case MATRIX_SLEEP_LESS:
+            case MATRIX_SLEEP_LESS_REPEAT:
                 /* Sleep less */
                 sleep -= SLEEP;
                 if (sleep < 0) sleep = 0;

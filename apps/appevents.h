@@ -54,6 +54,7 @@ enum {
     BUFFER_EVENT_CLOSED,
     BUFFER_EVENT_MOVED,
     BUFFER_EVENT_FINISHED,
+    BUFFER_EVENT_BUFFER_RESET
 };
 
 /** Generic GUI class events **/
@@ -61,6 +62,9 @@ enum {
     GUI_EVENT_STATUSBAR_TOGGLE = (EVENT_CLASS_GUI|1),
     GUI_EVENT_ACTIONUPDATE,
     GUI_EVENT_THEME_CHANGED,
+    /* Called when the UI viewport is cleared in the skin engine to
+     * notify the current screen that it needs to do an update */
+    GUI_EVENT_NEED_UI_UPDATE,
 };
 
 /** Recording events **/

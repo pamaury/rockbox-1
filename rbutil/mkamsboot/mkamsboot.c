@@ -176,6 +176,7 @@ static struct md5sums sansasums[] = {
     { MODEL_CLIPZIP, "1.01.15", "f62af954334cd9ba1a87a7fa58ec6074" },
     { MODEL_CLIPZIP, "1.01.17", "27bcb343d6950f35dc261629e22ba60c" },
     { MODEL_CLIPZIP, "1.01.18", "ef16aa9e02b49885ebede5aa149502e8" },
+    { MODEL_CLIPZIP, "1.01.20", "d88c8977cc6a952d3f51ece105869d97" },
 };
 
 #define NUM_MD5S (sizeof(sansasums)/sizeof(sansasums[0]))
@@ -358,8 +359,8 @@ unsigned char* load_of_file(
                     sizeof(tested_versions) - strlen(tested_versions) - 1);
             }
 
-        ERROR("[ERR]  Original firmware unknown, please try an other version." \
-              " Tested %sv%d versions are : %s\n",
+        ERROR("[ERR]  Original firmware unknown, please try another version."
+              " Tested %sv%d versions are: %s\n",
               ams_identity[model].model_name, ams_identity[model].hw_revision, tested_versions);
     }
 

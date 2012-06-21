@@ -51,6 +51,9 @@ EncoderLame::EncoderLame(QObject *parent) : EncoderBase(parent)
     SYMBOLRESOLVE(lame_close, int (*)(lame_global_flags*));
 
     qDebug() << "[EncoderLame] libmp3lame loaded:" << lib->isLoaded();
+
+    m_encoderVolume = RbSettings::subValue("lame", RbSettings::EncoderVolume).toDouble();
+    m_encoderQuality = RbSettings::subValue("lame", RbSettings::EncoderQuality).toDouble();
     m_symbolsResolved = true;
 }
 
@@ -82,11 +85,16 @@ void EncoderLame::generateSettings()
 
 void EncoderLame::saveSettings()
 {
-    // no user settings right now.
-    RbSettings::setSubValue("lame", RbSettings::EncoderVolume,
-            getSetting(VOLUME)->current().toDouble());
-    RbSettings::setSubValue("lame", RbSettings::EncoderQuality,
-            getSetting(QUALITY)->current().toDouble());
+    if(m_symbolsResolved) {
+        RbSettings::setSubValue("lame", RbSettings::EncoderVolume,
+                getSetting(VOLUME)->current().toDouble());
+        RbSettings::setSubValue("lame", RbSettings::EncoderQuality,
+                getSetting(QUALITY)->current().toDouble());
+        m_encoderVolume =
+            RbSettings::subValue("lame", RbSettings::EncoderVolume).toDouble();
+        m_encoderQuality =
+            RbSettings::subValue("lame", RbSettings::EncoderQuality).toDouble();
+    }
 }
 
 bool EncoderLame::start()
@@ -127,13 +135,11 @@ bool EncoderLame::encode(QString input,QString output)
     gfp = m_lame_init();
     m_lame_set_out_samplerate(gfp, 12000);      // resample to 12kHz
     // scale input volume
-    m_lame_set_scale(gfp,
-            RbSettings::subValue("lame", RbSettings::EncoderVolume).toDouble());
+    m_lame_set_scale(gfp, m_encoderVolume);
     m_lame_set_mode(gfp, MONO);                 // mono output mode
     m_lame_set_VBR(gfp, vbr_default);           // enable default VBR mode
     // VBR quality
-    m_lame_set_VBR_quality(gfp,
-            RbSettings::subValue("lame", RbSettings::EncoderQuality).toDouble());
+    m_lame_set_VBR_quality(gfp, m_encoderQuality);
     m_lame_set_VBR_max_bitrate_kbps(gfp, 64);   // maximum bitrate 64kbps
     m_lame_set_bWriteVbrTag(gfp, 0);            // disable LAME tag.
 
@@ -180,7 +186,7 @@ bool EncoderLame::encode(QString input,QString output)
                 channels = buf[2] | buf[3]<<8;
                 samplerate = buf[4] | buf[5]<<8 | buf[6]<<16 | buf[7]<<24;
                 samplesize = buf[14] | buf[15]<<8;
-                delete buf;
+                delete[] buf;
             }
         }
         // read data
@@ -251,8 +257,8 @@ bool EncoderLame::encode(QString input,QString output)
     else {
         qDebug() << "[EncoderLame] Unknown samplesize:" << samplesize;
         fin.close();
-        delete mp3buf;
-        delete wavbuf;
+        delete[] mp3buf;
+        delete[] wavbuf;
         return false;
     }
 #else
@@ -269,8 +275,8 @@ bool EncoderLame::encode(QString input,QString output)
     if(fout.write((char*)mp3buf, ret) != (unsigned int)ret) {
         qDebug() << "[EncoderLame] Writing mp3 data failed!" << ret;
         fout.close();
-        delete mp3buf;
-        delete wavbuf;
+        delete[] mp3buf;
+        delete[] wavbuf;
         return false;
     }
     // flush remaining data
@@ -278,15 +284,15 @@ bool EncoderLame::encode(QString input,QString output)
     if(fout.write((char*)mp3buf, ret) != (unsigned int)ret) {
         qDebug() << "[EncoderLame] Writing final mp3 data failed!";
         fout.close();
-        delete mp3buf;
-        delete wavbuf;
+        delete[] mp3buf;
+        delete[] wavbuf;
         return false;
     }
     // shut down encoder and clean up.
     m_lame_close(gfp);
     fout.close();
-    delete mp3buf;
-    delete wavbuf;
+    delete[] mp3buf;
+    delete[] wavbuf;
 
     return true;
 }

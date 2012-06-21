@@ -21,33 +21,14 @@
 #include "plugin.h"
 #include "lib/pluginlib_touchscreen.h"
 #include "lib/pluginlib_exit.h"
+#include "lib/pluginlib_actions.h"
 
-/* All swcodec targets have BUTTON_SELECT apart from the H10 and M3 */
+/* this set the context to use with PLA */
+static const struct button_mapping *plugin_contexts[] = { pla_main_ctx };
 
-#if CONFIG_KEYPAD == IRIVER_H10_PAD
-#define TESTCODEC_EXITBUTTON BUTTON_RIGHT
-#elif CONFIG_KEYPAD == IAUDIO_M3_PAD
-#define TESTCODEC_EXITBUTTON BUTTON_RC_PLAY
-#elif CONFIG_KEYPAD == SAMSUNG_YH_PAD
-#define TESTCODEC_EXITBUTTON BUTTON_PLAY
-#elif CONFIG_KEYPAD == COWON_D2_PAD || CONFIG_KEYPAD == ONDAVX747_PAD \
-   || CONFIG_KEYPAD == PHILIPS_HDD6330_PAD
-#define TESTCODEC_EXITBUTTON BUTTON_POWER
-#elif CONFIG_KEYPAD == PBELL_VIBE500_PAD
-#define TESTCODEC_EXITBUTTON BUTTON_REC
-#elif CONFIG_KEYPAD == MPIO_HD200_PAD
-#define TESTCODEC_EXITBUTTON (BUTTON_REC | BUTTON_PLAY)
-#elif CONFIG_KEYPAD == MPIO_HD300_PAD
-#define TESTCODEC_EXITBUTTON (BUTTON_REC | BUTTON_REPEAT)
-#elif CONFIG_KEYPAD == RK27XX_GENERIC_PAD
-#define TESTCODEC_EXITBUTTON (BUTTON_M | BUTTON_REPEAT)
-#elif CONFIG_KEYPAD == SAMSUNG_YPR0_PAD
-#define TESTCODEC_EXITBUTTON BUTTON_BACK
-#elif defined(HAVE_TOUCHSCREEN)
-#define TESTCODEC_EXITBUTTON (BUTTON_BOTTOMMIDDLE|BUTTON_REL)
-#else
-#define TESTCODEC_EXITBUTTON BUTTON_SELECT
-#endif
+#define TESTCODEC_EXITBUTTON  PLA_EXIT
+#define TESTCODEC_EXITBUTTON2 PLA_CANCEL
+
 
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
 static unsigned int boost =1;
@@ -183,6 +164,7 @@ static inline void int2le16(unsigned char* buf, int16_t x)
 
 static unsigned char *wavbuffer;
 static unsigned char *dspbuffer;
+static int dspbuffer_count;
 
 void init_wav(char* filename)
 {
@@ -234,42 +216,31 @@ static void* codec_get_buffer(size_t *size)
 
 static int process_dsp(const void *ch1, const void *ch2, int count)
 {
-    const char *src[2] = { ch1, ch2 };
-    int written_count = 0;
-    char *dest = dspbuffer;
-    
-    while (count > 0)
+    struct dsp_buffer src;
+    src.remcount = count;
+    src.pin[0] = ch1;
+    src.pin[1] = ch2;
+    src.proc_mask = 0;
+
+    struct dsp_buffer dst;
+    dst.remcount = 0;
+    dst.p16out = (int16_t *)dspbuffer;
+    dst.bufcount = dspbuffer_count;
+
+    while (1)
     {
-        int out_count = rb->dsp_output_count(ci.dsp, count);
+        int old_remcount = dst.remcount;
+        rb->dsp_process(ci.dsp, &src, &dst);
         
-        int inp_count = rb->dsp_input_count(ci.dsp, out_count);
-        
-        if (inp_count <= 0)
+        if (dst.bufcount <= 0 ||
+            (src.remcount <= 0 && dst.remcount <= old_remcount))
+        {
+            /* Dest is full or no input left and DSP purged */
             break;
-        
-        if (inp_count > count)
-            inp_count = count;
-        
-        out_count = rb->dsp_process(ci.dsp, dest, src, inp_count);
-        
-        if (out_count <= 0)
-            break;
-        
-        written_count += out_count;
-        dest += out_count * 4;
-        
-        count -= inp_count;
+        }
     }
     
-    return written_count;
-}
-
-static inline int32_t clip_sample(int32_t sample)
-{
-    if ((int16_t)sample != sample)
-        sample = 0x7fff ^ (sample >> 31);
-
-    return sample;
+    return dst.remcount;
 }
 
 /* Null output */
@@ -323,40 +294,39 @@ static int fill_buffer(int new_offset){
 /* WAV output or calculate crc32 of output*/
 static void pcmbuf_insert_wav_checksum(const void *ch1, const void *ch2, int count)
 {
-    const int16_t* data1_16;
-    const int16_t* data2_16;
-    const int32_t* data1_32;
-    const int32_t* data2_32;
-    unsigned char* p = wavbuffer;
-    const int scale = wavinfo.sampledepth - 15;
-    const int dc_bias = 1 << (scale - 1);
-    int channels = (wavinfo.stereomode == STEREO_MONO) ? 1 : 2;
-
     /* Prevent idle poweroff */
     rb->reset_poweroff_timer();
 
     if (use_dsp) {
         count = process_dsp(ch1, ch2, count);
         wavinfo.totalsamples += count;
-        if (channels == 1)
-        {
-            unsigned char *s = dspbuffer, *d = dspbuffer;
-            int c = count;
-            while (c-- > 0)
-            {
-                *d++ = *s++;
-                *d++ = *s++;
-                s++;
-                s++;
-            }
+
+#ifdef ROCKBOX_BIG_ENDIAN
+        unsigned char* p = dspbuffer;
+        int i;
+        for (i = 0; i < count; i++) {
+            int2le16(p,*(int16_t *)p);
+            p += 2;
+            int2le16(p,*(int16_t *)p);
+            p += 2;
         }
-        if (checksum)
-            crc32 = rb->crc_32(dspbuffer, count * 2 * channels, crc32);
-        else
-            rb->write(wavinfo.fd, dspbuffer, count * 2 * channels);
+#endif
+        if (checksum) {
+            crc32 = rb->crc_32(dspbuffer, count * 2 * sizeof (int16_t), crc32);
+        } else {
+            rb->write(wavinfo.fd, dspbuffer, count * 2 * sizeof (int16_t));
+        }
     }
     else
     { 
+        const int16_t* data1_16;
+        const int16_t* data2_16;
+        const int32_t* data1_32;
+        const int32_t* data2_32;
+        unsigned char* p = wavbuffer;
+        const int scale = wavinfo.sampledepth - 15;
+        const int dc_bias = 1 << (scale - 1);
+
         if (wavinfo.sampledepth <= 16) {
             data1_16 = ch1;
             data2_16 = ch2;
@@ -397,18 +367,18 @@ static void pcmbuf_insert_wav_checksum(const void *ch1, const void *ch2, int cou
             {
                 case STEREO_INTERLEAVED:
                     while (count--) {
-                        int2le16(p, clip_sample((*data1_32++ + dc_bias) >> scale));
+                        int2le16(p, clip_sample_16((*data1_32++ + dc_bias) >> scale));
                         p += 2;
-                        int2le16(p, clip_sample((*data1_32++ + dc_bias) >> scale));
+                        int2le16(p, clip_sample_16((*data1_32++ + dc_bias) >> scale));
                         p += 2;
                     }
                     break;
  
                 case STEREO_NONINTERLEAVED:
                     while (count--) {
-                        int2le16(p, clip_sample((*data1_32++ + dc_bias) >> scale));
+                        int2le16(p, clip_sample_16((*data1_32++ + dc_bias) >> scale));
                         p += 2;
-                        int2le16(p, clip_sample((*data2_32++ + dc_bias) >> scale));
+                        int2le16(p, clip_sample_16((*data2_32++ + dc_bias) >> scale));
                         p += 2;
                     }
 
@@ -416,7 +386,7 @@ static void pcmbuf_insert_wav_checksum(const void *ch1, const void *ch2, int cou
 
                 case STEREO_MONO:
                     while (count--) {
-                        int2le16(p, clip_sample((*data1_32++ + dc_bias) >> scale));
+                        int2le16(p, clip_sample_16((*data1_32++ + dc_bias) >> scale));
                         p += 2;
                     }
                     break;
@@ -530,20 +500,19 @@ static void configure(int setting, intptr_t value)
         rb->dsp_configure(ci.dsp, setting, value);
     switch(setting)
     {
-        case DSP_SWITCH_FREQUENCY:
         case DSP_SET_FREQUENCY:
             DEBUGF("samplerate=%d\n",(int)value);
-            wavinfo.samplerate = (int)value;
+            wavinfo.samplerate = use_dsp ? NATIVE_FREQUENCY : (int)value;
             break;
 
         case DSP_SET_SAMPLE_DEPTH:
             DEBUGF("sampledepth = %d\n",(int)value);
-            wavinfo.sampledepth=(int)value;
+            wavinfo.sampledepth = use_dsp ? 16 : (int)value;
             break;
 
         case DSP_SET_STEREO_MODE:
             DEBUGF("Stereo mode = %d\n",(int)value);
-            wavinfo.stereomode=(int)value;
+            wavinfo.stereomode = use_dsp ? STEREO_INTERLEAVED : (int)value;
             break;
     }
 
@@ -553,9 +522,7 @@ static void init_ci(void)
 {
     /* --- Our "fake" implementations of the codec API functions. --- */
 
-    ci.dsp = (struct dsp_config *)rb->dsp_configure(NULL, DSP_MYDSP,
-                                                    CODEC_IDX_AUDIO);
-
+    ci.dsp = rb->dsp_get_config(CODEC_IDX_AUDIO);
     ci.codec_get_buffer = codec_get_buffer;
 
     if (wavinfo.fd >= 0 || checksum) {
@@ -717,8 +684,10 @@ static enum plugin_status test_track(const char* filename)
     ci.id3 = &track.id3;
     ci.curpos = 0;
 
-    if (use_dsp)
+    if (use_dsp) {
         rb->dsp_configure(ci.dsp, DSP_RESET, 0);
+        rb->dsp_configure(ci.dsp, DSP_FLUSH, 0);
+    }
 
     if (checksum)
         crc32 = 0xffffffff;
@@ -734,7 +703,9 @@ static enum plugin_status test_track(const char* filename)
     /* Wait for codec thread to die */
     while (codec_playing)
     {
-        if (rb->button_get_w_tmo(HZ) == TESTCODEC_EXITBUTTON)
+        int button = pluginlib_getaction(HZ, plugin_contexts,
+                          ARRAYLEN(plugin_contexts));
+        if ((button == TESTCODEC_EXITBUTTON) || (button == TESTCODEC_EXITBUTTON2))
         {
             codec_action = CODEC_ACTION_HALT;
             break;
@@ -781,12 +752,8 @@ static enum plugin_status test_track(const char* filename)
         /* show effective clockrate in MHz needed for realtime decoding */
         if (speed > 0)
         {
-            int freq = CPUFREQ_MAX;
-            
-#ifdef HAVE_ADJUSTABLE_CPU_FREQ
-            if(!boost)
-                freq = CPUFREQ_NORMAL;
-#endif
+            int freq;
+            freq = *rb->cpu_frequency;
             
             speed = freq / speed;
             rb->snprintf(str,sizeof(str),"%d.%02dMHz needed for realtime",
@@ -848,9 +815,12 @@ void plugin_quit(void)
     else
 #endif
         do {
-            btn = rb->button_get(true);
+            btn = pluginlib_getaction(TIMEOUT_BLOCK, plugin_contexts,
+                          ARRAYLEN(plugin_contexts));
             exit_on_usb(btn);
-        } while (codec_action != CODEC_ACTION_HALT && btn != TESTCODEC_EXITBUTTON);
+        } while ((codec_action != CODEC_ACTION_HALT)
+                       && (btn != TESTCODEC_EXITBUTTON)
+                       && (btn != TESTCODEC_EXITBUTTON2));
 }
 
 /* plugin entry point */
@@ -874,6 +844,8 @@ enum plugin_status plugin_start(const void* parameter)
 
     wavbuffer = rb->plugin_get_buffer(&buffer_size);
     dspbuffer = wavbuffer + buffer_size / 2;
+    dspbuffer_count = (buffer_size - (dspbuffer - wavbuffer)) /
+                        (2 * sizeof (int16_t));
 
     codec_mallocbuf = rb->plugin_get_audio_buffer(&audiosize);
     /* Align codec_mallocbuf to pointer size, tlsf wants that */

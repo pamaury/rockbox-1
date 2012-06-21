@@ -353,6 +353,28 @@
 #define OSCILLOSCOPE_VOL_UP       BUTTON_UP
 #define OSCILLOSCOPE_VOL_DOWN     BUTTON_DOWN
 
+#elif (CONFIG_KEYPAD == HM60X_PAD)
+#define OSCILLOSCOPE_QUIT         BUTTON_POWER
+#define OSCILLOSCOPE_DRAWMODE     (BUTTON_POWER | BUTTON_SELECT)
+#define OSCILLOSCOPE_ADVMODE      (BUTTON_POWER | BUTTON_RIGHT)
+#define OSCILLOSCOPE_ORIENTATION  (BUTTON_POWER | BUTTON_LEFT)
+#define OSCILLOSCOPE_PAUSE        BUTTON_SELECT
+#define OSCILLOSCOPE_SPEED_UP     BUTTON_UP
+#define OSCILLOSCOPE_SPEED_DOWN   BUTTON_DOWN
+#define OSCILLOSCOPE_VOL_UP       BUTTON_RIGHT
+#define OSCILLOSCOPE_VOL_DOWN     BUTTON_LEFT
+
+#elif (CONFIG_KEYPAD == HM801_PAD)
+#define OSCILLOSCOPE_QUIT         BUTTON_POWER
+#define OSCILLOSCOPE_DRAWMODE     BUTTON_PREV
+#define OSCILLOSCOPE_ADVMODE      BUTTON_NEXT
+#define OSCILLOSCOPE_ORIENTATION  BUTTON_PLAY
+#define OSCILLOSCOPE_PAUSE        BUTTON_SELECT
+#define OSCILLOSCOPE_SPEED_UP     BUTTON_UP
+#define OSCILLOSCOPE_SPEED_DOWN   BUTTON_DOWN
+#define OSCILLOSCOPE_VOL_UP       BUTTON_RIGHT
+#define OSCILLOSCOPE_VOL_DOWN     BUTTON_LEFT
+
 #else
 #error No keymap defined!
 #endif
@@ -859,8 +881,10 @@ enum plugin_status plugin_start(const void* parameter)
             left = rb->mas_codec_readreg(0xC);
             right = rb->mas_codec_readreg(0xD);
 #elif (CONFIG_CODEC == SWCODEC)
+            static struct pcm_peaks peaks;
             rb->mixer_channel_calculate_peaks(PCM_MIXER_CHAN_PLAYBACK,
-                                              &left, &right);
+                                              &peaks);
+            left = peaks.left; right = peaks.right;
 #endif
             if (osc.orientation == OSC_HORIZ)
                 anim_horizontal(left, right);

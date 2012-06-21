@@ -29,8 +29,8 @@
 #include "system.h"
 #include "lcd.h"
 #include "file.h"
-#include "filefuncs.h"
 #ifndef __PCTOOL__
+#include "filefuncs.h"
 #include "lang.h"
 #include "dir.h"
 #ifdef HAVE_REMOTE_LCD
@@ -42,7 +42,6 @@
 #include "usb_screen.h"
 #include "talk.h"
 #include "audio.h"
-#include "mp3_playback.h"
 #include "settings.h"
 #include "storage.h"
 #include "ata_idle_notify.h"
@@ -88,6 +87,8 @@
 #include "playback.h"
 #if CONFIG_CODEC == SWCODEC
 #include "voice_thread.h"
+#else
+#include "mp3_playback.h"
 #endif
 
 #ifdef BOOTFILE
@@ -887,13 +888,15 @@ void keyclick_set_callback(keyclick_callback cb, void* data)
 }
 
 /* Produce keyclick based upon button and global settings */
-void keyclick_click(int action)
+void keyclick_click(bool rawbutton, int action)
 {
-    int button;
+    int button = action;
     static long last_button = BUTTON_NONE;
     bool do_beep = false;
 
-    get_action_statuscode(&button);
+    if (!rawbutton)
+        get_action_statuscode(&button);
+
     /* Settings filters */
     if (
 #ifdef HAVE_HARDWARE_CLICK
@@ -949,6 +952,45 @@ void keyclick_click(int action)
         system_sound_play(SOUND_KEYCLICK);
 #endif
     }
+}
+
+/* Return the ReplayGain mode adjusted by other relevant settings */
+static int replaygain_setting_mode(int type)
+{
+    switch (type)
+    {
+    case REPLAYGAIN_SHUFFLE:
+        type = global_settings.playlist_shuffle ?
+            REPLAYGAIN_TRACK : REPLAYGAIN_ALBUM;
+    case REPLAYGAIN_ALBUM:
+    case REPLAYGAIN_TRACK:
+    case REPLAYGAIN_OFF:
+    default:
+        break;
+    }
+
+    return type;
+}
+
+/* Return the ReplayGain mode adjusted for display purposes */
+int id3_get_replaygain_mode(const struct mp3entry *id3)
+{
+    if (!id3)
+        return -1;
+
+    int type = global_settings.replaygain_settings.type;
+    type = replaygain_setting_mode(type);
+
+    return (type != REPLAYGAIN_TRACK && id3->album_gain != 0) ?
+        REPLAYGAIN_ALBUM : (id3->track_gain != 0 ? REPLAYGAIN_TRACK : -1);
+}
+
+/* Update DSP's replaygain from global settings */
+void replaygain_update(void)
+{
+    struct replaygain_settings settings = global_settings.replaygain_settings;
+    settings.type = replaygain_setting_mode(settings.type);
+    dsp_replaygain_set_settings(&settings);
 }
 #endif /* CONFIG_CODEC == SWCODEC */
 

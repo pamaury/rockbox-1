@@ -44,7 +44,6 @@
 #include "statusbar.h"
 #include "metadata.h"
 
-
 #define TOKEN_VALUE_ONLY 0x0DEADC0D
 
 /* wps_data*/
@@ -81,7 +80,6 @@ struct gui_img {
     int buflib_handle;
     OFFSETTYPE(char*) label;
     bool loaded;            /* load state */
-    bool always_display;    /* not using the preload/display mechanism */
     int display;
     bool using_preloaded_icons; /* using the icon system instead of a bmp */
 };
@@ -114,6 +112,15 @@ struct progressbar {
     OFFSETTYPE(struct gui_img *) slider;
     bool horizontal;
     OFFSETTYPE(struct gui_img *) backdrop;
+};
+
+struct draw_rectangle {
+    int x;
+    int y;
+    int width;
+    int height;
+    unsigned start_colour;
+    unsigned end_colour;
 };
 #endif
 
@@ -166,6 +173,7 @@ struct skin_viewport {
     OFFSETTYPE(char*) label;
     int   parsed_fontid;
 #if LCD_DEPTH > 1
+    bool output_to_backdrop_buffer;
     unsigned start_fgcolour;
     unsigned start_bgcolour;
 #ifdef HAVE_LCD_COLOR
@@ -286,6 +294,7 @@ struct logical_if {
 struct substring {
     int start;
     int length;
+    bool expect_number;
     OFFSETTYPE(struct wps_token *) token;
 };
 
@@ -327,6 +336,7 @@ struct wps_data
 #endif
 #ifdef HAVE_BACKDROP_IMAGE
     int backdrop_id;
+    bool use_extra_framebuffer;
 #endif
 
 #ifdef HAVE_TOUCHSCREEN
@@ -401,7 +411,7 @@ struct gui_wps
 
 /* gui_wps end */
 
-char *get_image_filename(const char *start, const char* bmpdir,
+void get_image_filename(const char *start, const char* bmpdir,
                                 char *buf, int buf_size);
 /***** wps_tokens.c ******/
 

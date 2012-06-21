@@ -22,14 +22,15 @@ $(BOOTLINK): $(BOOTLDS) $(CONFIGFILE)
 	$(call PRINTS,PP $(@F))
 	$(call preprocess2file,$<,$@,-DLOADADDRESS=$(LOADADDRESS))
 
-$(BUILDDIR)/bootloader.elf: $$(OBJ) $$(FIRMLIB) $$(BOOTLINK)
+$(BUILDDIR)/bootloader.elf: $$(OBJ) $(FIRMLIB) $(CORE_LIBS) $$(BOOTLINK)
 	$(call PRINTS,LD $(@F))$(CC) $(GCCOPTS) -Os -nostdlib -o $@ $(OBJ) \
-		$(FIRMLIB) -lgcc -L$(BUILDDIR)/firmware -T$(BOOTLINK) \
-                $(GLOBAL_LDOPTS) \
-		 -Wl,--gc-sections -Wl,-Map,$(BUILDDIR)/bootloader.map
+		-L$(BUILDDIR)/firmware -lfirmware \
+		-L$(BUILDDIR)/lib $(call a2lnk, $(CORE_LIBS)) \
+		-lgcc -T$(BOOTLINK) $(GLOBAL_LDOPTS) \
+		-Wl,--gc-sections -Wl,-Map,$(BUILDDIR)/bootloader.map
 
 $(BUILDDIR)/bootloader.bin : $(BUILDDIR)/bootloader.elf
-	$(call PRINTS,OBJCOPY $(@F))$(OC) $(if $(filter yes, $(USE_ELF)), -S -x, -O binary) $< $@
+	$(call PRINTS,OC $(@F))$(call objcopy,$<,$@)
 
 $(BUILDDIR)/bootloader.asm: $(BUILDDIR)/bootloader.bin
 	$(TOOLSDIR)/sh2d -sh1 $< > $@

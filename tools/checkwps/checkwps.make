@@ -7,25 +7,31 @@
 # $Id$
 #
 
-FLAGS=-g -D__PCTOOL__ $(TARGET) -Wall
+GCCOPTS=-g -D__PCTOOL__ -DCHECKWPS $(TARGET)
 
-SRC= $(call preprocess, $(TOOLSDIR)/checkwps/SOURCES)
+CHECKWPS_SRC = $(call preprocess, $(TOOLSDIR)/checkwps/SOURCES)
+CHECKWPS_OBJ = $(call c2obj,$(CHECKWPS_SRC))
+
+OTHER_SRC += $(CHECKWPS_SRC)
 
 INCLUDES = -I$(ROOTDIR)/apps/gui \
            -I$(ROOTDIR)/apps/gui/skin_engine \
            -I$(ROOTDIR)/firmware/export \
            -I$(ROOTDIR)/firmware/include \
+           -I$(ROOTDIR)/firmware/target/hosted \
+           -I$(ROOTDIR)/firmware/target/hosted/sdl \
            -I$(ROOTDIR)/apps \
            -I$(ROOTDIR)/apps/recorder \
            -I$(ROOTDIR)/apps/radio \
+           -I$(ROOTDIR)/lib/rbcodec \
+           -I$(ROOTDIR)/lib/rbcodec/metadata \
+           -I$(ROOTDIR)/lib/rbcodec/dsp \
            -I$(APPSDIR) \
            -I$(BUILDDIR)
 
-# Makes mkdepfile happy
-GCCOPTS+=-D__PCTOOL__ -DCHECKWPS -g
-
 .SECONDEXPANSION: # $$(OBJ) is not populated until after this
 
-$(BUILDDIR)/$(BINARY): $$(OBJ) $$(SKINLIB)
+$(BUILDDIR)/$(BINARY): $$(CHECKWPS_OBJ) $$(CORE_LIBS)
 	@echo LD $(BINARY)
-	$(SILENT)$(HOSTCC) $(INCLUDE) $(FLAGS) -L$(BUILDDIR)/lib -lskin_parser -o $@ $+
+	$(SILENT)$(HOSTCC) -o $@ $+ $(INCLUDE) $(GCCOPTS)  \
+	-L$(BUILDDIR)/lib $(call a2lnk,$(CORE_LIBS))

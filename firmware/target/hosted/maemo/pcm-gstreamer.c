@@ -90,7 +90,7 @@ GstBus *gst_bus = NULL;
 static int bus_watch_id = 0;
 GMainLoop *pcm_loop = NULL;
 
-static __u8* pcm_data = NULL;
+static const void* pcm_data = NULL;
 static size_t pcm_data_size = 0;
 
 static int audio_locked = 0;
@@ -128,7 +128,7 @@ void pcm_dma_apply_settings(void)
 
 void pcm_play_dma_start(const void *addr, size_t size)
 {
-    pcm_data = (__u8 *) addr;
+    pcm_data = addr;
     pcm_data_size = size;
 
     if (playback_granted)
@@ -189,14 +189,12 @@ static void feed_data(GstElement * appsrc, guint size_hint, void *unused)
        from inside gstreamer's stream thread as it will deadlock */
     inside_feed_data = 1;
 
-    pcm_play_get_more_callback((void **)&pcm_data, &pcm_data_size);
-
-    if (pcm_data_size != 0)
+    if (pcm_play_dma_complete_callback(PCM_DMAST_OK, &pcm_data, &pcm_data_size))
     {
         GstBuffer *buffer = gst_buffer_new ();
         GstFlowReturn ret;
 
-        GST_BUFFER_DATA (buffer) = pcm_data;
+        GST_BUFFER_DATA (buffer) = (__u8 *)pcm_data;
         GST_BUFFER_SIZE (buffer) = pcm_data_size;
 
         g_signal_emit_by_name (appsrc, "push-buffer", buffer, &ret);
@@ -205,7 +203,7 @@ static void feed_data(GstElement * appsrc, guint size_hint, void *unused)
         if (ret != 0)
             DEBUGF("push-buffer error result: %d\n", ret);
 
-        pcm_play_dma_started_callback();
+        pcm_play_dma_status_callback(PCM_DMAST_STARTED);
     } else
     {
         DEBUGF("feed_data: No Data.\n");

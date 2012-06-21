@@ -55,10 +55,6 @@
 #include "language.h"
 #include "replaygain.h"
 
-#if CONFIG_CODEC == SWCODEC
-#include "dsp.h"
-#endif
-
 #if defined(ARCHOS_FMRECORDER) || defined(ARCHOS_RECORDERV2)
 #include "adc.h"
 #endif
@@ -767,6 +763,8 @@ bool browse_id3(void)
     struct id3view_info info;
     info.count = 0;
     info.id3 = id3;
+    bool ret = false;
+    push_current_activity(ACTIVITY_ID3SCREEN);
     for (i = 0; i < ARRAYLEN(id3_headers); i++)
     {
         char temp[8];
@@ -783,12 +781,21 @@ bool browse_id3(void)
         if(!gui_synclist_do_button(&id3_lists, &key,LIST_WRAP_UNLESS_HELD))
         {
             if (key == ACTION_STD_OK || key == ACTION_STD_CANCEL)
-                return false;
+            {
+                ret = false;
+                break;
+            }
             else if (key == ACTION_STD_MENU ||
                         default_event_handler(key) == SYS_USB_CONNECTED)
-                return true;
+            {
+                ret =  true;
+                break;
+            }
         }
     }
+
+    pop_current_activity();
+    return ret;
 }
 
 static const char* runtime_get_data(int selected_item, void* data,

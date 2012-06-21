@@ -49,7 +49,6 @@
 
 #define RES_NO (-1)
 
-#define RK27XX_SD_DEBUG
 /* debug stuff */
 unsigned long sd_debug_time_rd = 0;
 unsigned long sd_debug_time_wr = 0;
@@ -402,6 +401,7 @@ static void init_controller(void)
     SCU_IOMUXA_CON |= IOMUX_SD;
 
     /* enable and unmask SD interrupts in interrupt controller */
+    SCU_CLKCFG &= ~(1<<22);
     INTC_IMR |= (1<<10);
     INTC_IECR |= (1<<10);
 
@@ -552,7 +552,7 @@ int sd_read_sectors(IF_MD2(int drive,) unsigned long start, int count,
             /* wait for transfer completion */
             semaphore_wait(&transfer_completion_signal, TIMEOUT_BLOCK);
 
-#ifdef RK27XX_DEBUG
+#ifdef RK27XX_SD_DEBUG
             /* debug stuff */
             sd_debug_time_rd = 0xffffffff - TMR1CVR;
 #endif

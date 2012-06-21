@@ -28,6 +28,13 @@
 #include "pinctrl-imx233.h"
 #include "dma-imx233.h"
 
+/* for debug purpose */
+#if 0
+#define ASSERT_SSP(ssp) if(ssp < 1 || ssp > 2) panicf("ssp=%d in %s", ssp, __func__);
+#else
+#define ASSERT_SSP(ssp)
+#endif
+
 /* Used for DMA */
 struct ssp_dma_command_t
 {
@@ -36,7 +43,11 @@ struct ssp_dma_command_t
     uint32_t ctrl0;
     uint32_t cmd0;
     uint32_t cmd1;
-};
+    /* padded to next multiple of cache line size (32 bytes) */
+    uint32_t pad[2];
+} __attribute__((packed)) CACHEALIGN_ATTR;
+
+__ENSURE_STRUCT_CACHE_FRIENDLY(struct ssp_dma_command_t)
 
 static bool ssp_in_use[2];
 static int ssp_nr_in_use = 0;
@@ -46,6 +57,7 @@ static struct ssp_dma_command_t ssp_dma_cmd[2];
 static uint32_t ssp_bus_width[2];
 static unsigned ssp_log_block_size[2];
 static ssp_detect_cb_t ssp_detect_cb[2];
+static bool ssp_detect_invert[2];
 
 void INT_SSP(int ssp)
 {
@@ -93,6 +105,7 @@ void imx233_ssp_init(void)
 
 void imx233_ssp_start(int ssp)
 {
+    ASSERT_SSP(ssp)
     if(ssp_in_use[ssp - 1])
         return;
     ssp_in_use[ssp - 1] = true;
@@ -106,17 +119,18 @@ void imx233_ssp_start(int ssp)
         /** 2.3.1: the clk_ssp maximum frequency is 102.858 MHz */
         /* fracdiv = 18 => clk_io = pll = 480Mhz
          * intdiv = 5 => clk_ssp = 96Mhz */
-        imx233_set_fractional_divisor(CLK_IO, 18);
-        imx233_enable_clock(CLK_SSP, false);
-        imx233_set_clock_divisor(CLK_SSP, 5);
-        imx233_set_bypass_pll(CLK_SSP, false); /* use IO */
-        imx233_enable_clock(CLK_SSP, true);
+        imx233_clkctrl_set_fractional_divisor(CLK_IO, 18);
+        imx233_clkctrl_enable_clock(CLK_SSP, false);
+        imx233_clkctrl_set_clock_divisor(CLK_SSP, 5);
+        imx233_clkctrl_set_bypass_pll(CLK_SSP, false); /* use IO */
+        imx233_clkctrl_enable_clock(CLK_SSP, true);
     }
     ssp_nr_in_use++;
 }
 
 void imx233_ssp_stop(int ssp)
 {
+    ASSERT_SSP(ssp)
     if(!ssp_in_use[ssp - 1])
         return;
     ssp_in_use[ssp - 1] = false;
@@ -128,18 +142,20 @@ void imx233_ssp_stop(int ssp)
     ssp_nr_in_use--;
     if(ssp_nr_in_use == 0)
     {
-        imx233_enable_clock(CLK_SSP, false);
-        imx233_set_fractional_divisor(CLK_IO, 0);
+        imx233_clkctrl_enable_clock(CLK_SSP, false);
+        imx233_clkctrl_set_fractional_divisor(CLK_IO, 0);
     }
 }
 
 void imx233_ssp_softreset(int ssp)
 {
+    ASSERT_SSP(ssp)
     imx233_reset_block(&HW_SSP_CTRL0(ssp));
 }
 
 void imx233_ssp_set_timings(int ssp, int divide, int rate, int timeout)
 {
+    ASSERT_SSP(ssp)
     HW_SSP_TIMING(ssp) = divide << HW_SSP_TIMING__CLOCK_DIVIDE_BP | rate |
         timeout << HW_SSP_TIMING__CLOCK_TIMEOUT_BP;
 }
@@ -150,12 +166,15 @@ void imx233_ssp_setup_ssp1_sd_mmc_pins(bool enable_pullups, unsigned bus_width,
     /* SSP_{CMD,SCK} */
     imx233_set_pin_drive_strength(2, 0, drive_strength);
     imx233_set_pin_drive_strength(2, 6, drive_strength);
+    imx233_pinctrl_acquire_pin(2, 0, "ssp1 cmd");
+    imx233_pinctrl_acquire_pin(2, 6, "ssp1 sck");
     imx233_set_pin_function(2, 0, PINCTRL_FUNCTION_MAIN);
     imx233_set_pin_function(2, 6, PINCTRL_FUNCTION_MAIN);
     imx233_enable_pin_pullup(2, 0, enable_pullups);
     /* SSP_DATA{0-3} */
     for(unsigned i = 0; i < MIN(bus_width, 4); i++)
     {
+        imx233_pinctrl_acquire_pin(2, 2 + i, "ssp1 data");
         imx233_set_pin_drive_strength(2, 2 + i, drive_strength);
         imx233_set_pin_function(2, 2 + i, PINCTRL_FUNCTION_MAIN);
         imx233_enable_pin_pullup(2, 2 + i, enable_pullups);
@@ -166,12 +185,14 @@ void imx233_ssp_setup_ssp1_sd_mmc_pins(bool enable_pullups, unsigned bus_width,
     {
         if(use_alt)
         {
+            imx233_pinctrl_acquire_pin(0, 22 + i, "ssp1 data");
             imx233_set_pin_drive_strength(0, 22 + i, drive_strength);
             imx233_set_pin_function(0, 22 + i, PINCTRL_FUNCTION_ALT2);
             imx233_enable_pin_pullup(0, 22 + i, enable_pullups);
         }
         else
         {
+            imx233_pinctrl_acquire_pin(0, 4 + i, "ssp1 data");
             imx233_set_pin_drive_strength(0, 4 + i, drive_strength);
             imx233_set_pin_function(0, 4 + i, PINCTRL_FUNCTION_ALT2);
             imx233_enable_pin_pullup(0, 4 + i, enable_pullups);
@@ -183,6 +204,8 @@ void imx233_ssp_setup_ssp2_sd_mmc_pins(bool enable_pullups, unsigned bus_width,
     unsigned drive_strength)
 {
     /* SSP_{CMD,SCK} */
+    imx233_pinctrl_acquire_pin(0, 20, "ssp2 cmd");
+    imx233_pinctrl_acquire_pin(0, 24, "ssp2 sck");
     imx233_set_pin_drive_strength(0, 20, drive_strength);
     imx233_set_pin_drive_strength(0, 24, drive_strength);
     imx233_set_pin_function(0, 20, PINCTRL_FUNCTION_ALT2);
@@ -191,17 +214,18 @@ void imx233_ssp_setup_ssp2_sd_mmc_pins(bool enable_pullups, unsigned bus_width,
     /* SSP_DATA{0-7}*/
     for(unsigned i = 0; i < bus_width; i++)
     {
+        imx233_pinctrl_acquire_pin(0, i, "ssp2 data");
         imx233_set_pin_drive_strength(0, i, drive_strength);
         imx233_set_pin_function(0, i, PINCTRL_FUNCTION_ALT2);
         imx233_enable_pin_pullup(0, i, enable_pullups);
+        imx233_enable_gpio_output(0, i, false);
+        imx233_set_gpio_output(0, i, false);
     }
-
-    imx233_enable_gpio_output_mask(0, 0x11000ff, false);
-    imx233_set_gpio_output_mask(0, 0x11000ff, false);
 }
 
 void imx233_ssp_set_mode(int ssp, unsigned mode)
 {
+    ASSERT_SSP(ssp)
     switch(mode)
     {
         case HW_SSP_CTRL1__SSP_MODE__SD_MMC:
@@ -219,6 +243,7 @@ void imx233_ssp_set_mode(int ssp, unsigned mode)
 
 void imx233_ssp_set_bus_width(int ssp, unsigned width)
 {
+    ASSERT_SSP(ssp)
     switch(width)
     {
         case 1: ssp_bus_width[ssp - 1] = HW_SSP_CTRL0__BUS_WIDTH__ONE_BIT; break;
@@ -229,6 +254,7 @@ void imx233_ssp_set_bus_width(int ssp, unsigned width)
 
 void imx233_ssp_set_block_size(int ssp, unsigned log_block_size)
 {
+    ASSERT_SSP(ssp)
     ssp_log_block_size[ssp - 1] = log_block_size;
 }
 
@@ -236,9 +262,10 @@ enum imx233_ssp_error_t imx233_ssp_sd_mmc_transfer(int ssp, uint8_t cmd,
     uint32_t cmd_arg, enum imx233_ssp_resp_t resp, void *buffer, unsigned block_count,
     bool wait4irq, bool read, uint32_t *resp_ptr)
 {
+    ASSERT_SSP(ssp)
     mutex_lock(&ssp_mutex[ssp - 1]);
     /* Enable all interrupts */
-    imx233_enable_interrupt(INT_SRC_SSP_DMA(ssp), true);
+    imx233_icoll_enable_interrupt(INT_SRC_SSP_DMA(ssp), true);
     imx233_dma_enable_channel_interrupt(APB_SSP(ssp), true);
 
     unsigned xfer_size = block_count * (1 << ssp_log_block_size[ssp - 1]);
@@ -305,6 +332,7 @@ enum imx233_ssp_error_t imx233_ssp_sd_mmc_transfer(int ssp, uint8_t cmd,
 
 void imx233_ssp_sd_mmc_power_up_sequence(int ssp)
 {
+    ASSERT_SSP(ssp)
     __REG_CLR(HW_SSP_CMD0(ssp)) = HW_SSP_CMD0__SLOW_CLKING_EN;
     __REG_SET(HW_SSP_CMD0(ssp)) = HW_SSP_CMD0__CONT_CLKING_EN;
     mdelay(1);
@@ -313,6 +341,7 @@ void imx233_ssp_sd_mmc_power_up_sequence(int ssp)
 
 static int ssp_detect_oneshot_callback(int ssp)
 {
+    ASSERT_SSP(ssp)
     if(ssp_detect_cb[ssp - 1])
         ssp_detect_cb[ssp - 1](ssp);
 
@@ -341,22 +370,39 @@ static void detect_irq(int bank, int pin)
         timeout_register(&ssp2_detect_oneshot, ssp2_detect_oneshot_callback, (3*HZ/10), 0);
 }
 
-void imx233_ssp_sdmmc_setup_detect(int ssp, bool enable, ssp_detect_cb_t fn, bool first_time)
+void imx233_ssp_sdmmc_setup_detect(int ssp, bool enable, ssp_detect_cb_t fn,
+    bool first_time, bool invert)
 {
+    ASSERT_SSP(ssp)
     int bank = ssp == 1 ? 2 : 0;
     int pin = ssp == 1 ? 1 : 19;
     ssp_detect_cb[ssp - 1] = fn;
+    ssp_detect_invert[ssp - 1] = invert;
     if(enable)
     {
+        imx233_pinctrl_acquire_pin(bank, pin, ssp == 1 ? "ssp1 detect" : "ssp2 detect");
         imx233_set_pin_function(bank, pin, PINCTRL_FUNCTION_GPIO);
         imx233_enable_gpio_output(bank, pin, false);
     }
     if(first_time && imx233_ssp_sdmmc_detect(ssp))
         detect_irq(bank, pin);
-    imx233_setup_pin_irq(bank, pin, enable, true, !imx233_ssp_sdmmc_detect(ssp), detect_irq);
+    imx233_setup_pin_irq(bank, pin, enable, true, !imx233_ssp_sdmmc_detect_raw(ssp), detect_irq);
+}
+
+bool imx233_ssp_sdmmc_is_detect_inverted(int ssp)
+{
+    ASSERT_SSP(ssp)
+    return ssp_detect_invert[ssp - 1];
+}
+
+bool imx233_ssp_sdmmc_detect_raw(int ssp)
+{
+    ASSERT_SSP(ssp)
+    return !!(HW_SSP_STATUS(ssp) & HW_SSP_STATUS__CARD_DETECT);
 }
 
 bool imx233_ssp_sdmmc_detect(int ssp)
 {
-    return !!(HW_SSP_STATUS(ssp) & HW_SSP_STATUS__CARD_DETECT);
+    ASSERT_SSP(ssp)
+    return imx233_ssp_sdmmc_detect_raw(ssp) != ssp_detect_invert[ssp - 1];
 }

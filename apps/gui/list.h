@@ -180,7 +180,7 @@ extern bool gui_synclist_do_button(struct gui_synclist * lists,
 #if defined(HAVE_LCD_BITMAP) && !defined(PLUGIN)
 struct listitem_viewport_cfg {
     struct wps_data *data;
-    char*   label;
+    OFFSETTYPE(char *)   label;
     int     width;
     int     height;
     int     xmargin;
@@ -188,12 +188,16 @@ struct listitem_viewport_cfg {
     bool    tile;
     struct skin_viewport selected_item_vp;
 };
+
+bool skinlist_get_item(struct screen *display, struct gui_synclist *list, int x, int y, int *item);
 bool skinlist_draw(struct screen *display, struct gui_synclist *list);
 bool skinlist_is_selected_item(void);
 void skinlist_set_cfg(enum screen_type screen,
                       struct listitem_viewport_cfg *cfg);
 const char* skinlist_get_item_text(int offset, bool wrap, char* buf, size_t buf_size);
 int skinlist_get_item_number(void);
+int skinlist_get_item_row(void);
+int skinlist_get_item_column(void);
 enum themable_icons skinlist_get_item_icon(int offset, bool wrap);
 bool skinlist_needs_scrollbar(enum screen_type screen);
 void skinlist_get_scrollbar(int* nb_item, int* first_shown, int* last_shown);

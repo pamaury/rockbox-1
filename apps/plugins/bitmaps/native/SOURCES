@@ -2,7 +2,11 @@
 
 /* Brickmania */
 #ifdef HAVE_LCD_COLOR
+#if LCD_WIDTH >= 112
 brickmania_gameover.112x54x16.bmp
+#elif LCD_WIDTH >= 56
+brickmania_gameover.56x27x24.bmp
+#endif
 
 #if LCD_WIDTH >= 640 /* M:Robe 500 */
 brickmania_ball.15x15x16.bmp
@@ -76,7 +80,7 @@ brickmania_long_pads.132x80x16.bmp
 brickmania_powerups.132x80x16.bmp
 brickmania_break.132x80x16.bmp
 
-#elif LCD_WIDTH >= 96
+#elif LCD_WIDTH >= 128
 brickmania_ball.4x4x16.bmp
 brickmania_bricks.128x128x16.bmp
 brickmania_pads.132x80x16.bmp
@@ -84,6 +88,15 @@ brickmania_short_pads.132x80x16.bmp
 brickmania_long_pads.132x80x16.bmp
 brickmania_powerups.132x80x16.bmp
 brickmania_break.132x80x16.bmp
+
+#elif LCD_WIDTH >= 96
+brickmania_ball.4x4x16.bmp
+brickmania_bricks.96x96x16.bmp
+brickmania_pads.96x96x16.bmp
+brickmania_short_pads.96x96x16.bmp
+brickmania_long_pads.96x96x16.bmp
+brickmania_powerups.132x80x16.bmp
+brickmania_break.96x96x16.bmp
 
 #endif /* different colour displays */
 
@@ -151,7 +164,7 @@ bubbles_emblem.132x80x16.bmp
 bubbles_background.132x80x16.bmp
 #elif (LCD_WIDTH >= 96) && (LCD_HEIGHT >= 96)
 bubbles_emblem.132x80x16.bmp
-bubbles_background.128x96x16.bmp
+bubbles_background.96x96x16.bmp
 #endif
 #elif LCD_DEPTH <= 2 /* greyscale, mono */
 #if (LCD_WIDTH >= 160) && (LCD_HEIGHT >= 128)
@@ -263,6 +276,14 @@ clock_segments.128x128x2.bmp
 clock_smallsegments.128x128x2.bmp
 clock_logo.128x128x2.bmp
 clock_messages.128x128x2.bmp
+#elif (LCD_WIDTH >= 96) && (LCD_HEIGHT >= 96) && (LCD_DEPTH >= 16)
+clock_binary.96x96x16.bmp
+clock_digits.132x80x16.bmp
+clock_smalldigits.128x128x16.bmp
+clock_segments.132x80x16.bmp
+clock_smallsegments.128x128x16.bmp
+clock_logo.96x96x16.bmp
+clock_messages.96x96x16.bmp
 #elif (LCD_WIDTH >= 96) && (LCD_HEIGHT >= 64) && (LCD_DEPTH >= 1)
 clock_binary.112x64x1.bmp
 clock_digits.112x64x1.bmp
@@ -506,8 +527,10 @@ rockblox_background.128x160x16.bmp
 rockblox_background.128x128x16.bmp
 #elif (LCD_WIDTH == 132) && (LCD_HEIGHT == 80)
 rockblox_background.132x80x16.bmp
-#elif ((LCD_WIDTH == 128 && LCD_HEIGHT == 96) || (LCD_WIDTH == 96 && LCD_HEIGHT == 96))
+#elif (LCD_WIDTH == 128 && LCD_HEIGHT == 96)
 rockblox_background.128x96x2.bmp
+#elif (LCD_WIDTH == 96 && LCD_HEIGHT == 96)
+rockblox_background.96x96x16.bmp
 #endif
 #elif LCD_DEPTH == 2 /* greyscale versions */
 #if   (LCD_WIDTH == 160) && (LCD_HEIGHT == 128)

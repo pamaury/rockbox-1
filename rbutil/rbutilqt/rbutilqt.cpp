@@ -38,11 +38,13 @@
 #include "serverinfo.h"
 #include "systeminfo.h"
 #include "ziputil.h"
+#include "manualwidget.h"
+#include "infowidget.h"
 
 #include "progressloggerinterface.h"
 
 #include "bootloaderinstallbase.h"
-#include "bootloaderinstallmpio.h"
+#include "bootloaderinstallhelper.h"
 
 #if defined(Q_OS_LINUX)
 #include <stdio.h>
@@ -113,15 +115,18 @@ RbUtilQt::RbUtilQt(QWidget *parent) : QMainWindow(parent)
     m_gotInfo = false;
     m_auto = false;
 
-    // manual tab
-    ui.radioPdf->setChecked(true);
+    // insert ManualWidget() widget in manual tab
+    QGridLayout *mantablayout = new QGridLayout(this);
+    ui.manual->setLayout(mantablayout);
+    manual = new ManualWidget(this);
+    mantablayout->addWidget(manual);
 
     // info tab
-    ui.treeInfo->setAlternatingRowColors(true);
-    ui.treeInfo->setHeaderLabels(QStringList() << tr("File") << tr("Version"));
-    ui.treeInfo->expandAll();
-    ui.treeInfo->setColumnCount(2);
-    ui.treeInfo->setLayoutDirection(Qt::LeftToRight);
+    QGridLayout *infotablayout = new QGridLayout(this);
+    ui.info->setLayout(infotablayout);
+    info = new InfoWidget(this);
+    infotablayout->addWidget(info);
+
     // disable quick install until version info is available
     ui.buttonSmall->setEnabled(false);
     ui.buttonComplete->setEnabled(false);
@@ -145,7 +150,6 @@ RbUtilQt::RbUtilQt(QWidget *parent) : QMainWindow(parent)
     connect(ui.buttonThemes, SIGNAL(clicked()), this, SLOT(installThemes()));
     connect(ui.buttonRemoveRockbox, SIGNAL(clicked()), this, SLOT(uninstall()));
     connect(ui.buttonRemoveBootloader, SIGNAL(clicked()), this, SLOT(uninstallBootloader()));
-    connect(ui.buttonDownloadManual, SIGNAL(clicked()), this, SLOT(downloadManual()));
     connect(ui.buttonSmall, SIGNAL(clicked()), this, SLOT(smallInstall()));
     connect(ui.buttonComplete, SIGNAL(clicked()), this, SLOT(completeInstall()));
 
@@ -202,7 +206,7 @@ void RbUtilQt::updateTabs(int count)
 {
     switch(count) {
         case 6:
-            updateInfo();
+            info->updateInfo();
             break;
         default:
             break;
@@ -223,7 +227,7 @@ void RbUtilQt::downloadInfo()
     ui.statusbar->showMessage(tr("Downloading build information, please wait ..."));
     qDebug() << "[RbUtil] downloading build info";
     daily->setFile(&buildInfo);
-    daily->getFile(QUrl(SystemInfo::value(SystemInfo::ServerConfUrl).toString()));
+    daily->getFile(QUrl(SystemInfo::value(SystemInfo::BuildInfoUrl).toString()));
 }
 
 
@@ -245,42 +249,13 @@ void RbUtilQt::downloadDone(bool error)
     ServerInfo::readBuildInfo(buildInfo.fileName());
     buildInfo.close();
 
-    // start bleeding info download
-    bleeding = new HttpGet(this);
-    connect(bleeding, SIGNAL(done(bool)), this, SLOT(downloadBleedingDone(bool)));
-    connect(qApp, SIGNAL(lastWindowClosed()), bleeding, SLOT(abort()));
-    if(RbSettings::value(RbSettings::CacheOffline).toBool())
-        bleeding->setCache(true);
-    bleeding->setFile(&bleedingInfo);
-    bleeding->getFile(QUrl(SystemInfo::value(SystemInfo::BleedingInfo).toString()));
-    ui.statusbar->showMessage(tr("Downloading build information, please wait ..."));
+    ui.statusbar->showMessage(tr("Download build information finished."), 5000);
+    updateSettings();
+    m_gotInfo = true;
 
-}
+    //start check for updates
+    checkUpdate();
 
-
-void RbUtilQt::downloadBleedingDone(bool error)
-{
-    if(error) {
-        qDebug() << "[RbUtil] network error:" << bleeding->error();
-        ui.statusbar->showMessage(tr("Can't get version information!"));
-        QMessageBox::critical(this, tr("Network error"),
-                tr("Can't get version information.\n"
-                   "Network error: %1. Please check your network and proxy settings.")
-                    .arg(bleeding->errorString()));
-        return;
-    }
-    else {
-        bleedingInfo.open();
-        ServerInfo::readBleedingInfo(bleedingInfo.fileName());
-        bleedingInfo.close();
-
-        ui.statusbar->showMessage(tr("Download build information finished."), 5000);
-        updateSettings();
-        m_gotInfo = true;
-
-        //start check for updates
-        checkUpdate();
-    }
 }
 
 
@@ -343,7 +318,7 @@ void RbUtilQt::updateSettings()
 {
     qDebug() << "[RbUtil] updating current settings";
     updateDevice();
-    updateManual();
+    manual->updateManual();
     HttpGet::setGlobalProxy(proxy());
     HttpGet::setGlobalCache(RbSettings::value(RbSettings::CachePath).toString());
     HttpGet::setGlobalDumbCache(RbSettings::value(RbSettings::CacheOffline).toBool());
@@ -356,7 +331,7 @@ void RbUtilQt::updateSettings()
                 " or review your settings."));
         configDialog();
     }
-    else if(chkConfig(false)) {
+    else if(chkConfig(0)) {
         QApplication::processEvents();
         QMessageBox::critical(this, tr("Configuration error"),
             tr("Your configuration is invalid. This is most likely due "
@@ -387,7 +362,7 @@ void RbUtilQt::updateDevice()
     ui.actionRemove_bootloader->setEnabled(bootloaderUninstallable);
 
     /* Disable the whole tab widget if configuration is invalid */
-    bool configurationValid = !chkConfig(false);
+    bool configurationValid = !chkConfig(0);
     ui.tabWidget->setEnabled(configurationValid);
     ui.menuA_ctions->setEnabled(configurationValid);
 
@@ -416,42 +391,9 @@ void RbUtilQt::updateDevice()
 }
 
 
-void RbUtilQt::updateManual()
-{
-    if(RbSettings::value(RbSettings::Platform) != "")
-    {
-        QString manual = SystemInfo::value(SystemInfo::CurManual).toString();
-        QString buildservermodel = SystemInfo::value(SystemInfo::CurBuildserverModel).toString();
-        QString pdfmanual = SystemInfo::value(SystemInfo::ManualUrl).toString();
-        QString htmlmanual = pdfmanual;
-
-        pdfmanual.replace("%EXTENSION%", "pdf");
-        htmlmanual.replace("%EXTENSION%", "html");
-        if(manual.isEmpty()) {
-            pdfmanual.replace("%MANUALBASENAME%", "rockbox-" + buildservermodel);
-            htmlmanual.replace("%MANUALBASENAME%", "rockbox-" + buildservermodel + "/rockbox-build");
-        }
-        else {
-            pdfmanual.replace("%MANUALBASENAME%", "rockbox-" + manual);
-            htmlmanual.replace("%MANUALBASENAME%", "rockbox-" + manual + "/rockbox-build");
-        }
-
-        ui.labelPdfManual->setText(tr("<a href='%1'>PDF Manual</a>")
-            .arg(pdfmanual));
-        ui.labelHtmlManual->setText(tr("<a href='%1'>HTML Manual (opens in browser)</a>")
-            .arg(htmlmanual));
-    }
-    else {
-        ui.labelPdfManual->setText(tr("Select a device for a link to the correct manual"));
-        ui.labelHtmlManual->setText(tr("<a href='%1'>Manual Overview</a>")
-            .arg("http://www.rockbox.org/manual.shtml"));
-
-    }
-}
-
 void RbUtilQt::completeInstall()
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     if(QMessageBox::question(this, tr("Confirm Installation"),
            tr("Do you really want to perform a complete installation?\n\n"
               "This will install Rockbox %1. To install the most recent "
@@ -507,7 +449,7 @@ void RbUtilQt::completeInstall()
 
 void RbUtilQt::smallInstall()
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     if(QMessageBox::question(this, tr("Confirm Installation"),
            tr("Do you really want to perform a minimal installation? "
               "A minimal installation will contain only the absolutely "
@@ -581,15 +523,13 @@ void RbUtilQt::installdone(bool error)
 
 void RbUtilQt::installBtn()
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     install();
 }
 
 bool RbUtilQt::installAuto()
 {
-    QString file = SystemInfo::value(SystemInfo::ReleaseUrl).toString();
-    file.replace("%MODEL%", SystemInfo::value(SystemInfo::CurBuildserverModel).toString());
-    file.replace("%RELVERSION%", ServerInfo::value(ServerInfo::CurReleaseVersion).toString());
+    QString file = ServerInfo::value(ServerInfo::CurReleaseUrl).toString();
 
     // check installed Version and Target
     QString warning = Utils::checkEnvironment(false);
@@ -684,7 +624,7 @@ bool RbUtilQt::installBootloaderAuto()
 
 void RbUtilQt::installBootloaderBtn()
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     if(QMessageBox::question(this, tr("Confirm Installation"),
            tr("Do you really want to install the Bootloader?"),
               QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes) return;
@@ -702,8 +642,9 @@ void RbUtilQt::installBootloader()
     m_error = false;
 
     // create installer
-    BootloaderInstallBase *bl = BootloaderInstallBase::createBootloaderInstaller(this,
-                                    SystemInfo::value(SystemInfo::CurBootloaderMethod).toString());
+    BootloaderInstallBase *bl =
+        BootloaderInstallHelper::createBootloaderInstaller(this,
+                SystemInfo::value(SystemInfo::CurBootloaderMethod).toString());
     if(bl == NULL) {
         logger->addItem(tr("No install method known."), LOGERROR);
         logger->setFinished();
@@ -788,8 +729,14 @@ void RbUtilQt::installBootloader()
         }
         // open dialog to browse to of file
         QString offile;
+        QString filter
+            = SystemInfo::value(SystemInfo::CurBootloaderFilter).toString();
+        if(!filter.isEmpty()) {
+            filter = tr("Bootloader files (%1)").arg(filter) + ";;";
+        }
+        filter += tr("All files (*)");
         offile = QFileDialog::getOpenFileName(this,
-                tr("Select firmware file"), QDir::homePath());
+                tr("Select firmware file"), QDir::homePath(), filter);
         if(!QFileInfo(offile).isReadable()) {
             logger->addItem(tr("Error opening firmware file"), LOGERROR);
             logger->setFinished();
@@ -835,7 +782,7 @@ void RbUtilQt::installBootloaderPost(bool error)
     if(m_auto)
         return;
 
-    QString msg = BootloaderInstallBase::postinstallHints(
+    QString msg = BootloaderInstallHelper::postinstallHints(
                     RbSettings::value(RbSettings::Platform).toString());
     if(!msg.isEmpty()) {
         QMessageBox::information(this, tr("Manual steps required"), msg);
@@ -846,7 +793,7 @@ void RbUtilQt::installBootloaderPost(bool error)
 
 void RbUtilQt::installFontsBtn()
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     QString mountpoint = RbSettings::value(RbSettings::Mountpoint).toString();
     RockboxInfo installInfo(mountpoint);
     if(installInfo.revision().isEmpty() && installInfo.release().isEmpty()) {
@@ -882,7 +829,6 @@ void RbUtilQt::installFonts()
     if(relversion.isEmpty()) {
         // release is empty for non-release versions (i.e. daily / current)
         fontsurl = SystemInfo::value(SystemInfo::DailyFontUrl).toString();
-        logversion = installInfo.revision();
     }
     else {
         fontsurl = SystemInfo::value(SystemInfo::ReleaseFontUrl).toString();
@@ -910,7 +856,7 @@ void RbUtilQt::installFonts()
 
 void RbUtilQt::installVoice()
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
 
     if(m_gotInfo == false)
     {
@@ -935,9 +881,14 @@ void RbUtilQt::installVoice()
         return;
     }
     if(relversion.isEmpty()) {
-        // release is empty for non-release versions (i.e. daily / current)
-        voiceurl = SystemInfo::value(SystemInfo::DailyVoiceUrl).toString();
-        logversion = installInfo.revision();
+        // release is empty for development builds.
+        // No voice files are available for development builds.
+        QMessageBox::critical(this, tr("No voice file available"),
+                tr("The installed version of Rockbox is a development version. "
+                    "Pre-built voices are only available for release versions "
+                    "of Rockbox. Please generate a voice yourself using the "
+                    "\"Create voice file\" functionality."));
+        return;
     }
     else {
         voiceurl = SystemInfo::value(SystemInfo::ReleaseVoiceUrl).toString();
@@ -948,11 +899,8 @@ void RbUtilQt::installVoice()
        QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
         return;
 
-    QDate date = QDate::fromString(
-            ServerInfo::value(ServerInfo::DailyDate).toString(), Qt::ISODate);
     QString model = SystemInfo::value(SystemInfo::CurBuildserverModel).toString();
     // replace placeholder in voice url
-    voiceurl.replace("%DATE%", date.toString("yyyyMMdd"));
     voiceurl.replace("%MODEL%", model);
     voiceurl.replace("%RELVERSION%", relversion);
 
@@ -980,7 +928,7 @@ void RbUtilQt::installVoice()
 
 void RbUtilQt::installDoomBtn()
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     if(!hasDoom()){
         QMessageBox::critical(this, tr("Error"),
             tr("Your device doesn't have a doom plugin. Aborting."));
@@ -1016,7 +964,7 @@ void RbUtilQt::installDoom()
 
     installer->setUrl(SystemInfo::value(SystemInfo::DoomUrl).toString());
     installer->setLogSection("Game Addons");
-    installer->setLogVersion(ServerInfo::value(ServerInfo::DailyDate).toString());
+    installer->setLogVersion();
     installer->setMountPoint(RbSettings::value(RbSettings::Mountpoint).toString());
     if(!RbSettings::value(RbSettings::CacheDisabled).toBool())
         installer->setCache(true);
@@ -1031,7 +979,7 @@ void RbUtilQt::installDoom()
 
 void RbUtilQt::installThemes()
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     ThemesInstallWindow* tw = new ThemesInstallWindow(this);
     tw->setModal(true);
     tw->show();
@@ -1039,7 +987,7 @@ void RbUtilQt::installThemes()
 
 void RbUtilQt::createTalkFiles(void)
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     InstallTalkWindow *installWindow = new InstallTalkWindow(this);
     connect(installWindow, SIGNAL(settingsUpdated()), this, SLOT(updateSettings()));
     installWindow->show();
@@ -1048,16 +996,16 @@ void RbUtilQt::createTalkFiles(void)
 
 void RbUtilQt::createVoiceFile(void)
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     CreateVoiceWindow *installWindow = new CreateVoiceWindow(this);
-    
+
     connect(installWindow, SIGNAL(settingsUpdated()), this, SLOT(updateSettings()));
     installWindow->show();
 }
 
 void RbUtilQt::uninstall(void)
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     UninstallWindow *uninstallWindow = new UninstallWindow(this);
     uninstallWindow->show();
 
@@ -1065,7 +1013,7 @@ void RbUtilQt::uninstall(void)
 
 void RbUtilQt::uninstallBootloader(void)
 {
-    if(chkConfig(true)) return;
+    if(chkConfig(this)) return;
     if(QMessageBox::question(this, tr("Confirm Uninstallation"),
            tr("Do you really want to uninstall the Bootloader?"),
            QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes) return;
@@ -1077,10 +1025,11 @@ void RbUtilQt::uninstallBootloader(void)
     QString platform = RbSettings::value(RbSettings::Platform).toString();
 
     // create installer
-    BootloaderInstallBase *bl = BootloaderInstallBase::createBootloaderInstaller(this,
-                                    SystemInfo::value(SystemInfo::CurBootloaderMethod).toString());
+    BootloaderInstallBase *bl
+        = BootloaderInstallHelper::createBootloaderInstaller(this,
+                SystemInfo::value(SystemInfo::CurBootloaderMethod).toString());
 
-    if(bl == NULL ) {
+    if(bl == NULL) {
         logger->addItem(tr("No uninstall method for this target known."), LOGERROR);
         logger->setFinished();
         return;
@@ -1112,55 +1061,6 @@ void RbUtilQt::uninstallBootloader(void)
 
     logger->setFinished();
 
-}
-
-
-void RbUtilQt::downloadManual(void)
-{
-    if(chkConfig(true)) return;
-    if(QMessageBox::question(this, tr("Confirm download"),
-       tr("Do you really want to download the manual? The manual will be saved "
-            "to the root folder of your player."),
-        QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
-        return;
-
-    QString manual = SystemInfo::value(SystemInfo::CurManual).toString();
-    if(manual.isEmpty())
-        manual = "rockbox-"
-            + SystemInfo::value(SystemInfo::CurBuildserverModel).toString();
-
-    QDate date = QDate::fromString(ServerInfo::value(ServerInfo::DailyDate).toString(),Qt::ISODate);
-
-    QString manualurl;
-    QString target;
-    QString section;
-    if(ui.radioPdf->isChecked()) {
-        target = "/" + manual + ".pdf";
-        section = "Manual (PDF)";
-    }
-    else {
-        target = "/" + manual + "-" + date.toString("yyyyMMdd") + "-html.zip";
-        section = "Manual (HTML)";
-    }
-    manualurl = SystemInfo::value(SystemInfo::ManualUrl).toString() + "/" + target;
-    qDebug() << "[RbUtil] Manual URL:" << manualurl;
-
-    ProgressLoggerGui* logger = new ProgressLoggerGui(this);
-    logger->show();
-    installer = new ZipInstaller(this);
-    installer->setMountPoint(RbSettings::value(RbSettings::Mountpoint).toString());
-    if(!RbSettings::value(RbSettings::CacheDisabled).toBool())
-        installer->setCache(true);
-    installer->setLogSection(section);
-    installer->setLogVersion(ServerInfo::value(ServerInfo::DailyDate).toString());
-    installer->setUrl(manualurl);
-    installer->setUnzip(false);
-    installer->setTarget(target);
-    connect(installer, SIGNAL(logItem(QString, int)), logger, SLOT(addItem(QString, int)));
-    connect(installer, SIGNAL(logProgress(int, int)), logger, SLOT(setProgress(int, int)));
-    connect(installer, SIGNAL(done(bool)), logger, SLOT(setFinished()));
-    connect(logger, SIGNAL(aborted()), installer, SLOT(abort()));
-    installer->install();
 }
 
 
@@ -1214,70 +1114,6 @@ void RbUtilQt::installPortable(void)
 }
 
 
-void RbUtilQt::updateInfo()
-{
-    qDebug() << "[RbUtil] updating server info";
-
-    QString mp = RbSettings::value(RbSettings::Mountpoint).toString();
-    QSettings log(mp + "/.rockbox/rbutil.log", QSettings::IniFormat, this);
-    QStringList groups = log.childGroups();
-    QList<QTreeWidgetItem *> items;
-    QTreeWidgetItem *w, *w2;
-    QString min, max;
-    int olditems = 0;
-
-    // remove old list entries (if any)
-    int l = ui.treeInfo->topLevelItemCount();
-    while(l--) {
-        QTreeWidgetItem *m;
-        m = ui.treeInfo->takeTopLevelItem(l);
-        // delete childs (single level deep, no recursion here)
-        int n = m->childCount();
-        while(n--)
-            delete m->child(n);
-    }
-    // get and populate new items
-    for(int a = 0; a < groups.size(); a++) {
-        log.beginGroup(groups.at(a));
-        QStringList keys = log.allKeys();
-        w = new QTreeWidgetItem;
-        w->setFlags(Qt::ItemIsEnabled);
-        w->setText(0, groups.at(a));
-        items.append(w);
-        // get minimum and maximum version information so we can hilight old files
-        min = max = log.value(keys.at(0)).toString();
-        for(int b = 0; b < keys.size(); b++) {
-            if(log.value(keys.at(b)).toString() > max)
-                max = log.value(keys.at(b)).toString();
-            if(log.value(keys.at(b)).toString() < min)
-                min = log.value(keys.at(b)).toString();
-        }
-
-        for(int b = 0; b < keys.size(); b++) {
-            QString file;
-            file = mp + "/" + keys.at(b);
-            if(QFileInfo(file).isDir())
-                continue;
-            w2 = new QTreeWidgetItem(w, QStringList() << "/"
-                    + keys.at(b) << log.value(keys.at(b)).toString());
-            if(log.value(keys.at(b)).toString() != max) {
-                w2->setForeground(0, QBrush(QColor(255, 0, 0)));
-                w2->setForeground(1, QBrush(QColor(255, 0, 0)));
-                olditems++;
-            }
-            items.append(w2);
-        }
-        log.endGroup();
-        if(min != max)
-            w->setData(1, Qt::DisplayRole, QString("%1 / %2").arg(min, max));
-        else
-            w->setData(1, Qt::DisplayRole, max);
-    }
-    ui.treeInfo->insertTopLevelItems(0, items);
-    ui.treeInfo->resizeColumnToContents(0);
-}
-
-
 QUrl RbUtilQt::proxy()
 {
     QUrl proxy;
@@ -1290,7 +1126,7 @@ QUrl RbUtilQt::proxy()
 }
 
 
-bool RbUtilQt::chkConfig(bool warn)
+bool RbUtilQt::chkConfig(QWidget *parent)
 {
     bool error = false;
     if(RbSettings::value(RbSettings::Platform).toString().isEmpty()
@@ -1298,7 +1134,7 @@ bool RbUtilQt::chkConfig(bool warn)
         || !QFileInfo(RbSettings::value(RbSettings::Mountpoint).toString()).isWritable()) {
         error = true;
 
-        if(warn) QMessageBox::critical(this, tr("Configuration error"),
+        if(parent) QMessageBox::critical(parent, tr("Configuration error"),
             tr("Your configuration is invalid. Please go to the configuration "
                 "dialog and make sure the selected values are correct."));
     }

@@ -30,7 +30,9 @@
 #include "wps_internals.h" /* TODO: remove this line.. shoudlnt be needed */
 
 enum skinnable_screens {
+#ifdef HAVE_LCD_BITMAP
     CUSTOM_STATUSBAR,
+#endif
     WPS,
 #if CONFIG_TUNER
     FM_SCREEN,
@@ -70,6 +72,8 @@ bool skin_backdrops_preload(void);
 void skin_backdrop_show(int backdrop_id);
 void skin_backdrop_load_setting(void);
 void skin_backdrop_unload(int backdrop_id);
+#define BACKDROP_BUFFERNAME "#backdrop_buffer#"
+void* skin_backdrop_get_buffer(int backdrop_id);
 
 /* do the button loop as often as required for the peak meters to update
  * with a good refresh rate. 

@@ -60,7 +60,6 @@ bool            lcd_display_redraw = true;  /* Used for player simulator */
 char            having_new_lcd = true;      /* Used for player simulator */
 bool            sim_alarm_wakeup = false;
 const char     *sim_root_dir = NULL;
-extern int      display_zoom;
 
 static SDL_Thread *evt_thread = NULL;
 
@@ -133,6 +132,8 @@ static int sdl_event_thread(void * param)
     flags |= SDL_FULLSCREEN;
 #endif
 
+    SDL_WM_SetCaption(UI_TITLE, NULL);
+
     if ((gui_surface = SDL_SetVideoMode(width * display_zoom, height * display_zoom, depth, flags)) == NULL) {
         panicf("%s", SDL_GetError());
     }
@@ -148,8 +149,6 @@ static int sdl_event_thread(void * param)
     SDL_ShowCursor(SDL_ENABLE);
     SDL_SetCursor(hiddenCursor);
 #endif
-
-    SDL_WM_SetCaption(UI_TITLE, NULL);
 
     if (background && picture_surface != NULL)
         SDL_BlitSurface(picture_surface, NULL, gui_surface, NULL);
@@ -315,7 +314,7 @@ void sys_handle_argv(int argc, char *argv[])
             {
                 x++;
                 if(x < argc)
-                    display_zoom=atoi(argv[x]);
+                    display_zoom=atof(argv[x]);
                 else
                     display_zoom = 2;
                 printf("Window zoom is %d\n", display_zoom);
@@ -365,7 +364,7 @@ void sys_handle_argv(int argc, char *argv[])
             }
         }
     }
-    if (display_zoom > 1) {
+    if (display_zoom != 1) {
         background = false;
     }
 }

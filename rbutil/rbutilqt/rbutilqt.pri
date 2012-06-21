@@ -17,6 +17,8 @@
 
 # common files
 SOURCES += \
+ gui/manualwidget.cpp \
+ gui/infowidget.cpp \
  rbutilqt.cpp \
  main.cpp \
  installwindow.cpp \
@@ -54,6 +56,7 @@ SOURCES += \
  sysinfo.cpp \
  systrace.cpp \
  base/bootloaderinstallbase.cpp \
+ base/bootloaderinstallhelper.cpp \
  base/bootloaderinstallmi4.cpp \
  base/bootloaderinstallhex.cpp \
  base/bootloaderinstallipod.cpp \
@@ -78,6 +81,8 @@ SOURCES += \
 
 
 HEADERS += \
+ gui/manualwidget.h \
+ gui/infowidget.h \
  rbutilqt.h \
  installwindow.h \
  base/httpget.h \
@@ -119,6 +124,7 @@ HEADERS += \
  base/system.h \
  systrace.h \
  base/bootloaderinstallbase.h \
+ base/bootloaderinstallhelper.h \
  base/bootloaderinstallmi4.h \
  base/bootloaderinstallhex.h \
  base/bootloaderinstallipod.h \
@@ -146,6 +152,8 @@ HEADERS += \
 
 
 FORMS += \
+ gui/manualwidgetfrm.ui \
+ gui/infowidgetfrm.ui \
  rbutilqtfrm.ui \
  aboutbox.ui \
  installwindowfrm.ui \

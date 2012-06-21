@@ -43,9 +43,9 @@
 static volatile int locked = 0;
 static const int zerosample = 0;
 static unsigned char dblbuf[1024] IBSS_ATTR;
-static const unsigned char* queuedbuf;
+static const void* queuedbuf;
 static size_t queuedsize;
-static const unsigned char* nextbuf;
+static const void* nextbuf;
 static size_t nextsize;
 
 static const struct div_entry {
@@ -116,9 +116,10 @@ void INT_DMA(void)
         {
             if (!nextsize)
             {
-                pcm_play_get_more_callback((void**)&nextbuf, &nextsize);
-                if (!nextsize) break;
-                new_buffer = true;
+                new_buffer = pcm_play_dma_complete_callback(
+                                PCM_DMAST_OK, &nextbuf, &nextsize);
+                if (!new_buffer)
+                    break;
             }
             queuedsize = MIN(sizeof(dblbuf), nextsize / 2);
             nextsize -= queuedsize;
@@ -133,7 +134,7 @@ void INT_DMA(void)
 
         if (new_buffer)
         {
-            pcm_play_dma_started_callback();
+            pcm_play_dma_status_callback(PCM_DMAST_STARTED);
             new_buffer = false;
         }
     }
@@ -143,7 +144,7 @@ void INT_DMA(void)
 void pcm_play_dma_start(const void* addr, size_t size)
 {
     /* DMA channel on */
-    nextbuf = (const unsigned char*)addr;
+    nextbuf = addr;
     nextsize = size;
     queuedsize = 0;
     DMABASE0 = (unsigned int)(&zerosample);

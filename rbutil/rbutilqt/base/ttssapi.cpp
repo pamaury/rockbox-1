@@ -38,10 +38,14 @@ TTSBase::Capabilities TTSSapi::capabilities()
 void TTSSapi::generateSettings()
 {
     // language
-    QMap<QString, QString> languages = SystemInfo::languages();
+    QMap<QString, QStringList> languages = SystemInfo::languages();
+    QStringList langs;
+    for(int i = 0; i < languages.values().size(); ++i) {
+        langs.append(languages.values().at(i).at(0));
+    }
     EncTtsSetting* setting =new EncTtsSetting(this,EncTtsSetting::eSTRINGLIST,
         tr("Language:"),RbSettings::subValue("sapi",RbSettings::TtsLanguage),
-        languages.values());
+        langs);
     connect(setting,SIGNAL(dataChanged()),this,SLOT(updateVoiceList()));
     insertSetting(eLANGUAGE,setting);
     // voice
@@ -227,11 +231,8 @@ TTSStatus TTSSapi::voice(QString text,QString wavfile, QString *errStr)
     *voicestream << query;
     *voicestream << "SYNC\tbla\r\n";
     voicestream->flush();
-    char temp[20];
-    
-    //we use this, because waitForReadyRead doesnt work from a different thread
-    while( voicescript->readLine(temp,20) == 0)
-        QCoreApplication::processEvents();
+    // do NOT poll the output with readLine(), this causes sync issues!
+    voicescript->waitForReadyRead();
 
     if(!QFileInfo(wavfile).isFile()) {
         qDebug() << "[TTSSapi] output file does not exist:" << wavfile;

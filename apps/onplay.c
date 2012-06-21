@@ -91,7 +91,8 @@ static int bookmark_menu_callback(int action,
                                   const struct menu_item_ex *this_item);
 MENUITEM_FUNCTION(bookmark_create_menu_item, 0,
                   ID2P(LANG_BOOKMARK_MENU_CREATE),
-                  bookmark_create_menu, NULL, NULL, Icon_Bookmark);
+                  bookmark_create_menu, NULL,
+                  bookmark_menu_callback, Icon_Bookmark);
 MENUITEM_FUNCTION(bookmark_load_menu_item, 0,
                   ID2P(LANG_BOOKMARK_MENU_LIST),
                   bookmark_load_menu, NULL,
@@ -105,13 +106,20 @@ static int bookmark_menu_callback(int action,
     switch (action)
     {
         case ACTION_REQUEST_MENUITEM:
-            if (this_item == &bookmark_load_menu_item)
+            /* hide create bookmark option if bookmarking isn't currently possible (no track playing, queued tracks...) */
+            if (this_item == &bookmark_create_menu_item)
+            {
+                if (!bookmark_is_bookmarkable_state())
+                    return ACTION_EXIT_MENUITEM;
+            }
+            /* hide loading bookmarks menu if no bookmarks exist */
+            else if (this_item == &bookmark_load_menu_item)
             {
                 if (!bookmark_exists())
                     return ACTION_EXIT_MENUITEM;
             }
-            /* hide the bookmark menu if there is no playback */
-            else if ((audio_status() & AUDIO_STATUS_PLAY) == 0)
+            /* hide the bookmark menu if bookmarks can't be loaded or created */
+            else if (!bookmark_is_bookmarkable_state() && !bookmark_exists())
                 return ACTION_EXIT_MENUITEM;
             break;
 #ifdef HAVE_LCD_CHARCELLS
@@ -992,7 +1000,7 @@ static int browse_id3_wrapper(void)
 /* CONTEXT_WPS items */
 MENUITEM_FUNCTION(browse_id3_item, MENU_FUNC_CHECK_RETVAL, ID2P(LANG_MENU_SHOW_ID3_INFO),
                   browse_id3_wrapper, NULL, NULL, Icon_NOICON);
-#ifdef HAVE_PITCHSCREEN
+#ifdef HAVE_PITCHCONTROL
 MENUITEM_FUNCTION(pitch_screen_item, 0, ID2P(LANG_PITCH),
                   gui_syncpitchscreen_run, NULL, NULL, Icon_Audio);
 #endif
@@ -1181,7 +1189,7 @@ MAKE_ONPLAYMENU( wps_onplay_menu, ID2P(LANG_ONPLAY_MENU_TITLE),
 #endif           
            &browse_id3_item, &list_viewers_item,
            &delete_file_item, &view_cue_item,
-#ifdef HAVE_PITCHSCREEN
+#ifdef HAVE_PITCHCONTROL
            &pitch_screen_item,
 #endif
          );
@@ -1275,7 +1283,7 @@ static struct hotkey_assignment hotkey_items[] = {
     { HOTKEY_SHOW_TRACK_INFO,   LANG_MENU_SHOW_ID3_INFO,
             HOTKEY_FUNC(browse_id3, NULL),
             ONPLAY_RELOAD_DIR },
-#ifdef HAVE_PITCHSCREEN
+#ifdef HAVE_PITCHCONTROL
     { HOTKEY_PITCHSCREEN,       LANG_PITCH,
             HOTKEY_FUNC(gui_syncpitchscreen_run, NULL),
             ONPLAY_RELOAD_DIR },

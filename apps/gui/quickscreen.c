@@ -30,7 +30,6 @@
 #include "settings_list.h"
 #include "lang.h"
 #include "playlist.h"
-#include "dsp.h"
 #include "viewport.h"
 #include "audio.h"
 #include "quickscreen.h"
@@ -38,6 +37,7 @@
 #include "list.h"
 #include "option_select.h"
 #include "debug.h"
+#include "shortcuts.h"
 
  /* 1 top, 1 bottom, 2 on either side, 1 for the icons
   * if enough space, top and bottom have 2 lines */
@@ -391,6 +391,9 @@ bool quick_screen_quick(int button_enter)
     bool oldshuffle = global_settings.playlist_shuffle;
     int oldrepeat = global_settings.repeat_mode;
 
+    if (global_settings.shortcuts_replaces_qs)
+        return do_shortcut_menu(NULL);
+
     qs.items[QUICKSCREEN_TOP] =
             get_setting(global_settings.qs_items[QUICKSCREEN_TOP], NULL);
     qs.items[QUICKSCREEN_LEFT] =
@@ -416,9 +419,7 @@ bool quick_screen_quick(int button_enter)
         if (oldshuffle != global_settings.playlist_shuffle
             && audio_status() & AUDIO_STATUS_PLAY)
         {
-#if CONFIG_CODEC == SWCODEC
-            dsp_set_replaygain();
-#endif
+            replaygain_update();
             if (global_settings.playlist_shuffle)
                 playlist_randomise(NULL, current_tick, true);
             else

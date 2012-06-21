@@ -32,6 +32,7 @@
 #include "rtc-imx233.h"
 #include "dcp-imx233.h"
 #include "pinctrl-imx233.h"
+#include "ocotp-imx233.h"
 #include "string.h"
 
 #define DEBUG_CANCEL  BUTTON_BACK
@@ -46,6 +47,46 @@ static struct
     { "dac", APB_AUDIO_DAC },
     { "ssp1", APB_SSP(1) },
     { "ssp2", APB_SSP(2) },
+};
+
+static struct
+{
+    const char *name;
+    unsigned src;
+} dbg_irqs[] =
+{
+    { "ssp2_err", INT_SRC_SSP2_ERROR },
+    { "vdd5v", INT_SRC_VDD5V },
+    { "dac_dma", INT_SRC_DAC_DMA },
+    { "dac_err", INT_SRC_DAC_ERROR },
+    { "adc_dma", INT_SRC_ADC_DMA },
+    { "adc_err", INT_SRC_ADC_ERROR },
+    { "usbctrl", INT_SRC_USB_CTRL },
+    { "ssp1_dma", INT_SRC_SSP1_DMA },
+    { "ssp1_err", INT_SRC_SSP1_ERROR },
+    { "gpio0", INT_SRC_GPIO0 },
+    { "gpio1", INT_SRC_GPIO1 },
+    { "gpio2", INT_SRC_GPIO2 },
+    { "ssp2_dma", INT_SRC_SSP2_DMA },
+    { "i2c_dma", INT_SRC_I2C_DMA },
+    { "i2c_err", INT_SRC_I2C_ERROR },
+    { "timer0", INT_SRC_TIMER(0) },
+    { "timer1", INT_SRC_TIMER(1) },
+    { "timer2", INT_SRC_TIMER(2) },
+    { "timer3", INT_SRC_TIMER(3) },
+    { "touch_det", INT_SRC_TOUCH_DETECT },
+    { "lradc_ch0", INT_SRC_LRADC_CHx(0) },
+    { "lradc_ch1", INT_SRC_LRADC_CHx(1) },
+    { "lradc_ch2", INT_SRC_LRADC_CHx(2) },
+    { "lradc_ch3", INT_SRC_LRADC_CHx(3) },
+    { "lradc_ch4", INT_SRC_LRADC_CHx(4) },
+    { "lradc_ch5", INT_SRC_LRADC_CHx(5) },
+    { "lradc_ch6", INT_SRC_LRADC_CHx(6) },
+    { "lradc_ch7", INT_SRC_LRADC_CHx(7) },
+    { "lcdif_dma", INT_SRC_LCDIF_DMA },
+    { "lcdif_err", INT_SRC_LCDIF_ERROR },
+    { "rtc_1msec", INT_SRC_RTC_1MSEC },
+    { "dcp", INT_SRC_DCP },
 };
 
 bool dbg_hw_info_dma(void)
@@ -235,19 +276,19 @@ bool dbg_hw_info_clkctrl(void)
             #define c dbg_clk[i]
             lcd_putsf(0, i + 1, "%4s", c.name);
             if(c.has_enable)
-                lcd_putsf(5, i + 1, "%2d", imx233_is_clock_enable(c.clk));
+                lcd_putsf(5, i + 1, "%2d", imx233_clkctrl_is_clock_enabled(c.clk));
             if(c.has_bypass)
-                lcd_putsf(8, i + 1, "%2d", imx233_get_bypass_pll(c.clk));
-            if(c.has_idiv && imx233_get_clock_divisor(c.clk) != 0)
-                lcd_putsf(10, i + 1, "%4d", imx233_get_clock_divisor(c.clk));
-            if(c.has_fdiv && imx233_get_fractional_divisor(c.clk) != 0)
-                lcd_putsf(16, i + 1, "%4d", imx233_get_fractional_divisor(c.clk));
+                lcd_putsf(8, i + 1, "%2d", imx233_clkctrl_get_bypass_pll(c.clk));
+            if(c.has_idiv && imx233_clkctrl_get_clock_divisor(c.clk) != 0)
+                lcd_putsf(10, i + 1, "%4d", imx233_clkctrl_get_clock_divisor(c.clk));
+            if(c.has_fdiv && imx233_clkctrl_get_fractional_divisor(c.clk) != 0)
+                lcd_putsf(16, i + 1, "%4d", imx233_clkctrl_get_fractional_divisor(c.clk));
             if(c.has_freq)
-                lcd_putsf(21, i + 1, "%9d", imx233_get_clock_freq(c.clk));
+                lcd_putsf(21, i + 1, "%9d", imx233_clkctrl_get_clock_freq(c.clk));
             #undef c
         }
         int line = ARRAYLEN(dbg_clk) + 1;
-        lcd_putsf(0, line, "auto slow: %d", imx233_is_auto_slow_enable());
+        lcd_putsf(0, line, "auto slow: %d", imx233_clkctrl_is_auto_slow_enabled());
         line++;
         lcd_putsf(0, line, "as monitor: ");
         int x_off = 12;
@@ -255,7 +296,7 @@ bool dbg_hw_info_clkctrl(void)
         unsigned line_w = lcd_getwidth() / font_get_width(font_get(lcd_getfont()), ' ');
         for(unsigned i = 0; i < ARRAYLEN(dbg_as_monitor); i++)
         {
-            if(!imx233_is_auto_slow_monitor_enable(dbg_as_monitor[i].monitor))
+            if(!imx233_clkctrl_is_auto_slow_monitor_enabled(dbg_as_monitor[i].monitor))
                 continue;
             if(!first)
             {
@@ -395,7 +436,109 @@ bool dbg_hw_info_dcp(void)
     }
 }
 
+bool dbg_hw_info_icoll(void)
+{
+    lcd_setfont(FONT_SYSFIXED);
+
+    int first_irq = 0;
+    int dbg_irqs_count = sizeof(dbg_irqs) / sizeof(dbg_irqs[0]);
+    int line_count = lcd_getheight() / font_get(lcd_getfont())->height;
+    
+    while(1)
+    {
+        int button = get_action(CONTEXT_STD, HZ / 10);
+        switch(button)
+        {
+            case ACTION_STD_NEXT:
+                first_irq++;
+                if(first_irq >= dbg_irqs_count)
+                    first_irq = dbg_irqs_count - 1;
+                break;
+            case ACTION_STD_PREV:
+                first_irq--;
+                if(first_irq < 0)
+                    first_irq = 0;
+                break;
+            case ACTION_STD_OK:
+            case ACTION_STD_MENU:
+                lcd_setfont(FONT_UI);
+                return true;
+            case ACTION_STD_CANCEL:
+                lcd_setfont(FONT_UI);
+                return false;
+        }
+
+        lcd_clear_display();
+        for(int i = first_irq, j = 0; i < dbg_irqs_count && j < line_count; i++, j++)
+        {
+            struct imx233_icoll_irq_info_t info = imx233_icoll_get_irq_info(dbg_irqs[i].src);
+            lcd_putsf(0, j, "%s", dbg_irqs[i].name);
+            if(info.enabled)
+                lcd_putsf(10, j, "%d", info.freq);
+        }
+        lcd_update();
+        yield();
+    }
+}
+
 bool dbg_hw_info_pinctrl(void)
+{
+    lcd_setfont(FONT_SYSFIXED);
+
+#ifdef IMX233_PINCTRL_DEBUG
+    unsigned top_user = 0;
+#endif
+    while(1)
+    {
+        int button = get_action(CONTEXT_STD, HZ / 10);
+        switch(button)
+        {
+            case ACTION_STD_NEXT:
+#ifdef IMX233_PINCTRL_DEBUG
+                top_user++;
+                break;
+#endif
+            case ACTION_STD_PREV:
+#ifdef IMX233_PINCTRL_DEBUG
+                if(top_user > 0)
+                    top_user--;
+                break;
+#endif
+            case ACTION_STD_OK:
+            case ACTION_STD_MENU:
+                lcd_setfont(FONT_UI);
+                return true;
+            case ACTION_STD_CANCEL:
+                lcd_setfont(FONT_UI);
+                return false;
+        }
+
+        lcd_clear_display();
+        for(int i = 0; i < 4; i++)
+            lcd_putsf(0, i, "DIN%d = 0x%08x", i, imx233_get_gpio_input_mask(i, 0xffffffff));
+#ifdef IMX233_PINCTRL_DEBUG
+        unsigned cur_line = 6;
+        unsigned last_line = lcd_getheight() / font_get(lcd_getfont())->height;
+        unsigned cur_idx = 0;
+
+        for(int bank = 0; bank < 4; bank++)
+        for(int pin = 0; pin < 32; pin++)
+        {
+            const char *owner = imx233_pinctrl_get_pin_use(bank, pin);
+            if(owner == NULL)
+                continue;
+            if(cur_idx++ >= top_user && cur_line < last_line)
+                lcd_putsf(0, cur_line++, "B%dP%02d %s", bank, pin, owner);
+        }
+        if(cur_idx < top_user)
+            top_user = cur_idx - 1;
+#endif
+        lcd_update();
+        yield();
+    }
+}
+
+bool dbg_hw_info_ocotp(void)
 {
     lcd_setfont(FONT_SYSFIXED);
 
@@ -417,7 +560,7 @@ bool dbg_hw_info_pinctrl(void)
 
         lcd_clear_display();
         for(int i = 0; i < 4; i++)
-            lcd_putsf(0, i, "DIN%d = 0x%08x", i, imx233_get_gpio_input_mask(i, 0xffffffff));
+            lcd_putsf(0, i, "OPS%d=%08x", i, imx233_ocotp_read(&HW_OCOTP_OPSx(i)));
         lcd_update();
         yield();
     }
@@ -427,7 +570,8 @@ bool dbg_hw_info(void)
 {
     return dbg_hw_info_clkctrl() && dbg_hw_info_dma() && dbg_hw_info_adc() &&
         dbg_hw_info_power() && dbg_hw_info_powermgmt() && dbg_hw_info_rtc() &&
-        dbg_hw_info_dcp() && dbg_hw_info_pinctrl() && dbg_hw_target_info();
+        dbg_hw_info_dcp() && dbg_hw_info_pinctrl() && dbg_hw_info_icoll() &&
+        dbg_hw_info_ocotp() && dbg_hw_target_info();
 }
 
 bool dbg_ports(void)

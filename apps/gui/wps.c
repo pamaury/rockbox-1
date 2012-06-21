@@ -61,7 +61,6 @@
 #include "viewport.h"
 #include "pcmbuf.h"
 #include "option_select.h"
-#include "dsp.h"
 #include "playlist_viewer.h"
 #include "wps.h"
 #include "statusbar-skinned.h"
@@ -429,10 +428,10 @@ bool ffwd_rew(int button)
 #ifdef HAVE_TOUCHSCREEN
             if (button == ACTION_TOUCHSCREEN)
                 button = skintouch_to_wps(skin_get_gwps(WPS, SCREEN_MAIN)->data);
+#endif
             if (button != ACTION_WPS_SEEKFWD &&
                 button != ACTION_WPS_SEEKBACK)
                 button = ACTION_WPS_STOPSEEK;
-#endif
         }
     }
     return usb;
@@ -593,7 +592,7 @@ static void play_hop(int direction)
 #endif
         return;
     }
-    else if ((direction == -1 && elapsed < step))
+    else if (direction == -1 && elapsed < step)
     {
         elapsed = 0;
     }
@@ -1012,7 +1011,7 @@ long gui_wps_show(void)
 #endif /* BUTTON_F3 */
 
                 /* pitch screen */
-#ifdef HAVE_PITCHSCREEN
+#ifdef HAVE_PITCHCONTROL
             case ACTION_WPS_PITCHSCREEN:
             {
                 gwps_leave_wps();
@@ -1021,7 +1020,7 @@ long gui_wps_show(void)
                 restore = true;
             }
             break;
-#endif /* HAVE_PITCHSCREEN */
+#endif /* HAVE_PITCHCONTROL */
 
 #ifdef AB_REPEAT_ENABLE
             /* reset A&B markers */
@@ -1040,6 +1039,21 @@ long gui_wps_show(void)
                     break;
                 bookmark = true;
                 exit = true;
+                break;
+
+            case ACTION_WPS_LIST_BOOKMARKS:
+                gwps_leave_wps();
+                if (bookmark_load_menu() == BOOKMARK_USB_CONNECTED)
+                {
+                    return GO_TO_ROOT;
+                }
+                restore = true;
+                break;
+
+            case ACTION_WPS_CREATE_BOOKMARK:
+                gwps_leave_wps();
+                bookmark_create_menu();
+                restore = true;
                 break;
 
             case ACTION_WPS_ID3SCREEN:

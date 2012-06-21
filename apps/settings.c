@@ -80,7 +80,7 @@ struct user_settings global_settings;
 struct system_status global_status;
 
 #if CONFIG_CODEC == SWCODEC
-#include "dsp.h"
+#include "dsp_proc_settings.h"
 #include "playback.h"
 #ifdef HAVE_RECORDING
 #include "enc_config.h"
@@ -781,9 +781,6 @@ void settings_apply(bool read_disk)
 #ifdef HAVE_LCD_BITMAP
     int rc;
 #endif
-#if CONFIG_CODEC == SWCODEC
-    int i;
-#endif
     sound_settings_apply();
 
 #ifdef HAVE_DISK_STORAGE
@@ -981,25 +978,25 @@ void settings_apply(bool read_disk)
 #ifdef HAVE_CROSSFADE
     audio_set_crossfade(global_settings.crossfade);
 #endif
-    dsp_set_replaygain();
-    dsp_set_crossfeed(global_settings.crossfeed);
+    replaygain_update();
+    dsp_set_crossfeed_type(global_settings.crossfeed);
     dsp_set_crossfeed_direct_gain(global_settings.crossfeed_direct_gain);
     dsp_set_crossfeed_cross_params(global_settings.crossfeed_cross_gain,
                                    global_settings.crossfeed_hf_attenuation,
                                    global_settings.crossfeed_hf_cutoff);
 
     /* Configure software equalizer, hardware eq is handled in audio_init() */
-    dsp_set_eq(global_settings.eq_enabled);
+    dsp_eq_enable(global_settings.eq_enabled);
     dsp_set_eq_precut(global_settings.eq_precut);
-    for(i = 0; i < 5; i++) {
-        dsp_set_eq_coefs(i);
+    for(int i = 0; i < EQ_NUM_BANDS; i++) {
+        dsp_set_eq_coefs(i, &global_settings.eq_band_settings[i]);
     }
 
     dsp_dither_enable(global_settings.dithering_enabled);
-#ifdef HAVE_PITCHSCREEN
+#ifdef HAVE_PITCHCONTROL
     dsp_timestretch_enable(global_settings.timestretch_enabled);
 #endif
-    dsp_set_compressor();
+    dsp_set_compressor(&global_settings.compressor_settings);
 #endif
 
 #ifdef HAVE_SPDIF_POWER

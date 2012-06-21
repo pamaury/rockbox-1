@@ -511,20 +511,18 @@ CONFIG_KEYPAD == MROBE500_PAD
 #   define SOL_QUIT          BUTTON_POWER
 #   define SOL_UP            BUTTON_UP
 #   define SOL_DOWN          BUTTON_DOWN
-#   define SOL_LEFT          BUTTON_VOL_UP
-#   define SOL_RIGHT         BUTTON_VOL_DOWN
-#   define SOL_MOVE          (BUTTON_SELECT|BUTTON_REL)
-#   define SOL_DRAW          (BUTTON_PLAYPAUSE|BUTTON_REL)
-#   define SOL_REM2CUR       BUTTON_LEFT
-#   define SOL_CUR2STACK_PRE (BUTTON_RIGHT | BUTTON_REPEAT)
-#   define SOL_CUR2STACK     BUTTON_RIGHT
-#   define SOL_REM2STACK     (BUTTON_LEFT|BUTTON_REPEAT)
-#   define SOL_REM2STACK_PRE BUTTON_LEFT
-#   define HK_MOVE           "SHORT SELECT"
-#   define HK_DRAW           "SHORT PLAYPAUSE"
-#   define HK_REM2CUR        "LEFT"
-#   define HK_CUR2STACK      "DOUBLE SELECT"
-#   define HK_REM2STACK      "LEFT"
+#   define SOL_LEFT          BUTTON_LEFT
+#   define SOL_RIGHT         BUTTON_RIGHT
+#   define SOL_MOVE          BUTTON_SELECT
+#   define SOL_DRAW          BUTTON_BACK
+#   define SOL_REM2CUR       BUTTON_BOTTOMLEFT
+#   define SOL_CUR2STACK     BUTTON_PLAYPAUSE|BUTTON_REL
+#   define SOL_REM2STACK     BUTTON_PLAYPAUSE|BUTTON_REPEAT
+#   define HK_MOVE           "SELECT"
+#   define HK_DRAW           "BACK"
+#   define HK_REM2CUR        "BOTTOM-LEFT"
+#   define HK_CUR2STACK      "PLAY-PAUSE"
+#   define HK_REM2STACK      "BOTTOM-RIGHT"
 
 #elif (CONFIG_KEYPAD == SANSA_CONNECT_PAD)
 #   define SOL_QUIT          BUTTON_POWER
@@ -561,6 +559,42 @@ CONFIG_KEYPAD == MROBE500_PAD
 #   define HK_REM2CUR      "Long User"
 #   define HK_CUR2STACK    "Long Select.."
 #   define HK_REM2STACK    "Power"
+
+#elif (CONFIG_KEYPAD == HM60X_PAD)
+#   define SOL_QUIT         BUTTON_POWER
+#   define SOL_UP           BUTTON_UP
+#   define SOL_DOWN         BUTTON_DOWN
+#   define SOL_LEFT         BUTTON_LEFT
+#   define SOL_RIGHT        BUTTON_RIGHT
+#   define SOL_MOVE_PRE     BUTTON_SELECT
+#   define SOL_MOVE         (BUTTON_POWER | BUTTON_SELECT)
+#   define SOL_DRAW         (BUTTON_POWER | BUTTON_UP)
+#   define SOL_REM2CUR      (BUTTON_POWER | BUTTON_DOWN)
+#   define SOL_CUR2STACK    (BUTTON_POWER | BUTTON_LEFT)
+#   define SOL_REM2STACK    (BUTTON_POWER | BUTTON_RIGHT)
+#   define HK_MOVE         "SELECT + POWER"
+#   define HK_DRAW         "UP + POWER"
+#   define HK_REM2CUR      "DOWN + POWER"
+#   define HK_CUR2STACK    "LEFT + POWER"
+#   define HK_REM2STACK    "RIGHT + POWER"
+
+#elif (CONFIG_KEYPAD == HM801_PAD)
+#   define SOL_QUIT         BUTTON_POWER
+#   define SOL_UP           BUTTON_UP
+#   define SOL_DOWN         BUTTON_DOWN
+#   define SOL_LEFT         BUTTON_LEFT
+#   define SOL_RIGHT        BUTTON_RIGHT
+#   define SOL_MOVE_PRE     BUTTON_PREV
+#   define SOL_MOVE         BUTTON_NEXT
+#   define SOL_DRAW         BUTTON_PLAY
+#   define SOL_REM2CUR      BUTTON_SELECT
+#   define SOL_CUR2STACK    (BUTTON_POWER | BUTTON_LEFT)
+#   define SOL_REM2STACK    (BUTTON_POWER | BUTTON_RIGHT)
+#   define HK_MOVE         "PREV"
+#   define HK_DRAW         "PLAY"
+#   define HK_REM2CUR      "SELECT"
+#   define HK_CUR2STACK    "POWER + LEFT"
+#   define HK_REM2STACK    "POWER + RIGHT"
 
 #else
 #error No keymap defined!

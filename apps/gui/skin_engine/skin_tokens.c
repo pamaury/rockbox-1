@@ -49,7 +49,6 @@
 /* Image stuff */
 #include "albumart.h"
 #endif
-#include "dsp.h"
 #include "playlist.h"
 #if CONFIG_CODEC == SWCODEC
 #include "playback.h"
@@ -126,7 +125,7 @@ char* get_dir(char* buf, int buf_size, const char* path, int level)
     return buf;
 }
 
-#if (CONFIG_CODEC != MAS3507D) && defined (HAVE_PITCHSCREEN)
+#if (CONFIG_CODEC != MAS3507D) && defined (HAVE_PITCHCONTROL)
 /* A helper to determine the enum value for pitch/speed.
 
    When there are two choices (i.e. boolean), return 1 if the value is
@@ -887,6 +886,32 @@ const char *get_token_value(struct gui_wps *gwps,
             return get_lif_token_value(gwps, lif, offset, buf, buf_size);
         }
         break;
+        case SKIN_TOKEN_LOGICAL_AND:
+        case SKIN_TOKEN_LOGICAL_OR:
+        {
+            int i = 0, truecount = 0;
+            char *skinbuffer = get_skin_buffer(data);
+            struct skin_element *element =
+                    SKINOFFSETTOPTR(skinbuffer, token->value.data);
+            struct skin_tag_parameter* params =
+                    SKINOFFSETTOPTR(skinbuffer, element->params);
+            struct skin_tag_parameter* thistag;
+            for (i=0; i<element->params_count; i++)
+            {
+                thistag = &params[i];
+                struct skin_element *tokenelement =
+                        SKINOFFSETTOPTR(skinbuffer, thistag->data.code);
+                out_text  =  get_token_value(gwps,
+                        SKINOFFSETTOPTR(skinbuffer, tokenelement->data),
+                        offset, buf, buf_size, intval);
+                if (out_text && *out_text)
+                    truecount++;
+                else if (token->type == SKIN_TOKEN_LOGICAL_AND)
+                    return NULL;
+            }
+            return truecount ? "true" : NULL;
+        }
+        break;
         case SKIN_TOKEN_SUBSTRING:
         {
             struct substring *ss = SKINOFFSETTOPTR(get_skin_buffer(data), token->value.data);
@@ -901,7 +926,10 @@ const char *get_token_value(struct gui_wps *gwps,
                 if (utf8_len < ss->start)
                     return NULL;
 
-                start_byte = utf8seek(token_val, ss->start);
+                if (ss->start < 0)
+                    start_byte = utf8seek(token_val, ss->start + utf8_len);
+                else
+                    start_byte = utf8seek(token_val, ss->start);
 
                 if (ss->length < 0 || (ss->start + ss->length) > utf8_len)
                     end_byte = strlen(token_val);
@@ -916,6 +944,10 @@ const char *get_token_value(struct gui_wps *gwps,
                     buf = &buf[start_byte];
 
                 buf[byte_len] = '\0';
+                if (ss->expect_number &&
+                    intval && (buf[0] >= '0' && buf[0] <= '9'))
+                    *intval = atoi(buf) + 1; /* so 0 is the first item */
+                    
                 return buf;
             }
             return NULL;
@@ -951,6 +983,16 @@ const char *get_token_value(struct gui_wps *gwps,
             struct listitem *li = (struct listitem *)SKINOFFSETTOPTR(get_skin_buffer(data), token->value.data);
             return skinlist_get_item_text(li->offset, li->wrap, buf, buf_size);
         }
+        case SKIN_TOKEN_LIST_ITEM_ROW:
+            if (intval)
+                *intval = skinlist_get_item_row() + 1;
+            snprintf(buf, buf_size, "%d",skinlist_get_item_row() + 1);
+            return buf;
+        case SKIN_TOKEN_LIST_ITEM_COLUMN:
+            if (intval)
+                *intval = skinlist_get_item_column() + 1;
+            snprintf(buf, buf_size, "%d",skinlist_get_item_column() + 1);
+            return buf;
         case SKIN_TOKEN_LIST_ITEM_NUMBER:
             if (intval)
                 *intval = skinlist_get_item_number() + 1;
@@ -1378,25 +1420,22 @@ const char *get_token_value(struct gui_wps *gwps,
 
         case SKIN_TOKEN_REPLAYGAIN:
         {
+            int globtype = global_settings.replaygain_settings.type;
             int val;
 
-            if (global_settings.replaygain_type == REPLAYGAIN_OFF)
+
+            if (globtype == REPLAYGAIN_OFF)
                 val = 1; /* off */
             else
             {
-                int type;
-                if (LIKELY(id3))
-                    type = get_replaygain_mode(id3->track_gain != 0,
-                                               id3->album_gain != 0);
-                else
-                    type = -1;
+                int type = id3_get_replaygain_mode(id3);
 
                 if (type < 0)
                     val = 6;    /* no tag */
                 else
                     val = type + 2;
 
-                if (global_settings.replaygain_type == REPLAYGAIN_SHUFFLE)
+                if (globtype == REPLAYGAIN_SHUFFLE)
                     val += 2;
             }
 
@@ -1423,7 +1462,7 @@ const char *get_token_value(struct gui_wps *gwps,
         }
 #endif  /* (CONFIG_CODEC == SWCODEC) */
 
-#if (CONFIG_CODEC != MAS3507D) && defined (HAVE_PITCHSCREEN)
+#if (CONFIG_CODEC != MAS3507D) && defined (HAVE_PITCHCONTROL)
         case SKIN_TOKEN_SOUND_PITCH:
         {
             int32_t pitch = sound_get_pitch();
@@ -1438,7 +1477,7 @@ const char *get_token_value(struct gui_wps *gwps,
         }
 #endif
 
-#if (CONFIG_CODEC == SWCODEC) && defined (HAVE_PITCHSCREEN)
+#if (CONFIG_CODEC == SWCODEC) && defined (HAVE_PITCHCONTROL)
     case SKIN_TOKEN_SOUND_SPEED:
     {
         int32_t pitch = sound_get_pitch();

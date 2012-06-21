@@ -25,13 +25,12 @@
   #include "m68k/pcm-mixer.c"
 #else
 
-/* generic pcm-mixer.c */
 #include "dsp-util.h" /* for clip_sample_16 */
 /* Mix channels' samples and apply gain factors */
-static FORCE_INLINE void mix_samples(uint32_t *out,
-                                     int16_t *src0,
+static FORCE_INLINE void mix_samples(int16_t *out,
+                                     const int16_t *src0,
                                      int32_t src0_amp,
-                                     int16_t *src1,
+                                     const int16_t *src1,
                                      int32_t src1_amp,
                                      size_t size)
 {
@@ -42,9 +41,10 @@ static FORCE_INLINE void mix_samples(uint32_t *out,
         {
             int32_t l = *src0++ + *src1++;
             int32_t h = *src0++ + *src1++;
-            *out++ = (uint16_t)clip_sample_16(l) | (clip_sample_16(h) << 16);
+            *out++ = clip_sample_16(l);
+            *out++ = clip_sample_16(h);
         }
-        while ((size -= 4) > 0);
+        while ((size -= 2*sizeof(int16_t)) > 0);
     }
     else if (src0_amp != MIX_AMP_UNITY && src1_amp != MIX_AMP_UNITY)
     {
@@ -53,9 +53,10 @@ static FORCE_INLINE void mix_samples(uint32_t *out,
         {
             int32_t l = (*src0++ * src0_amp >> 16) + (*src1++ * src1_amp >> 16);
             int32_t h = (*src0++ * src0_amp >> 16) + (*src1++ * src1_amp >> 16);
-            *out++ = (uint16_t)clip_sample_16(l) | (clip_sample_16(h) << 16);
+            *out++ = clip_sample_16(l);
+            *out++ = clip_sample_16(h);
         }
-        while ((size -= 4) > 0);
+        while ((size -= 2*sizeof(int16_t)) > 0);
     }
     else
     {
@@ -63,7 +64,7 @@ static FORCE_INLINE void mix_samples(uint32_t *out,
         if (src0_amp != MIX_AMP_UNITY)
         {
             /* Keep unity in src0, amp0 */
-            int16_t *src_tmp = src0;
+            const int16_t *src_tmp = src0;
             src0 = src1;
             src1 = src_tmp;
             src1_amp = src0_amp;
@@ -74,15 +75,16 @@ static FORCE_INLINE void mix_samples(uint32_t *out,
         {
             int32_t l = *src0++ + (*src1++ * src1_amp >> 16);
             int32_t h = *src0++ + (*src1++ * src1_amp >> 16);
-            *out++ = (uint16_t)clip_sample_16(l) | (clip_sample_16(h) << 16);
+            *out++ = clip_sample_16(l);
+            *out++ = clip_sample_16(h);
         }
-        while ((size -= 4) > 0);
+        while ((size -= 2*sizeof(int16_t)) > 0);
     }
 }
 
 /* Write channel's samples and apply gain factor */
-static FORCE_INLINE void write_samples(uint32_t *out,
-                                       int16_t *src,
+static FORCE_INLINE void write_samples(int16_t *out,
+                                       const int16_t *src,
                                        int32_t amp,
                                        size_t size)
 {
@@ -97,12 +99,17 @@ static FORCE_INLINE void write_samples(uint32_t *out,
         do
         {
             int32_t l = *src++ * amp >> 16;
-            int32_t h = *src++ * amp & 0xffff0000;
-            *out++ = (uint16_t)l | h;
+            int32_t h = *src++ * amp >> 16;
+            *out++ = l;
+            *out++ = h;
         }
-        while ((size -= 4) > 0);
+        while ((size -= 2*sizeof(int16_t)) > 0);
     }     
 }
 
 
+#endif /* CPU_* */
+
+#ifndef mixer_buffer_callback_exit
+#define mixer_buffer_callback_exit() do{}while(0)
 #endif

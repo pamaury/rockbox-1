@@ -70,7 +70,7 @@ unsigned char rc_buf[5];
 /* ================================================== */
 static struct semaphore rc_thread_wakeup;
 static unsigned int remote_thread_id;
-static int remote_stack[256/sizeof(int)];
+static int remote_stack[512/sizeof(int)];
 static const char * const remote_thread_name = "remote";
 
 static bool remote_wait_ready(int ready_mask)
@@ -255,7 +255,7 @@ static void remote_update_lcd(void)
         data[6] = (y + 1) << 3;     /* y2    */
 
         for (x = 0; x < RC_WIDTH; x++)
-            data[x + 7] = lcd_remote_framebuffer[y][x];
+            data[x + 7] = *FBREMOTEADDR(x,y);
 
         remote_tx(data, RC_WIDTH + 7);
 

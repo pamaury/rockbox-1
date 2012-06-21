@@ -52,7 +52,7 @@ void CreateVoiceWindow::accept()
     
     //configure voicecreator
     voicecreator->setMountPoint(RbSettings::value(RbSettings::Mountpoint).toString());
-    voicecreator->setLang(ui.comboLanguage->currentText());
+    voicecreator->setLang(ui.comboLanguage->itemData(ui.comboLanguage->currentIndex()).toString());
     voicecreator->setWavtrimThreshold(ui.wavtrimthreshold->value());
        
     //start creating
@@ -69,51 +69,37 @@ void CreateVoiceWindow::accept()
 void CreateVoiceWindow::updateSettings(void)
 {
     // fill in language combobox
-    QMap<QString, QString> languages = SystemInfo::languages();
+    QMap<QString, QStringList> languages = SystemInfo::languages();
 
     for(int i = 0; i < languages.keys().size(); i++) {
         QString key = languages.keys().at(i);
-        ui.comboLanguage->addItem(languages.value(key), key);
+        ui.comboLanguage->addItem(languages.value(key).at(1), languages.value(key).at(0));
     }
     // set saved lang
-    int sel = ui.comboLanguage->findText(
+    int sel = ui.comboLanguage->findData(
             RbSettings::value(RbSettings::VoiceLanguage).toString());
     // if no saved language is found try to figure the language from the UI lang
     if(sel == -1) {
-        QString f = RbSettings::value(RbSettings::Language).toString();
+        QString uilang = RbSettings::value(RbSettings::Language).toString();
         // if no language is set default to english. Make sure not to check an empty string.
-        if(f.isEmpty()) f = "english";
+        QString f = "english";
+        if(!uilang.isEmpty() && languages.contains(uilang)) {
+            f = languages.value(uilang).at(0);
+        }
         sel = ui.comboLanguage->findData(f);
-        qDebug() << "sel =" << sel;
-        // still nothing found?
-        if(sel == -1)
-            sel = ui.comboLanguage->findText("english", Qt::MatchStartsWith);
+        qDebug() << "[CreateVoiceWindow] Selected language index:" << sel;
     }
     ui.comboLanguage->setCurrentIndex(sel);
 
     QString ttsName = RbSettings::value(RbSettings::Tts).toString();
     TTSBase* tts = TTSBase::getTTS(this,ttsName);
     if(tts->configOk())
-        ui.labelTtsProfile->setText(tr("Selected TTS engine: <b>%1</b>")
+        ui.labelTtsProfile->setText(tr("Engine: <b>%1</b>")
             .arg(TTSBase::getTTSName(ttsName)));
     else
-        ui.labelTtsProfile->setText(tr("Selected TTS engine: <b>%1</b>")
+        ui.labelTtsProfile->setText(tr("Engine: <b>%1</b>")
             .arg("Invalid TTS configuration!"));
 
-    QString encoder = SystemInfo::value(SystemInfo::CurEncoder).toString();
-    // only proceed if encoder setting is set
-    EncoderBase* enc = EncoderBase::getEncoder(this,encoder);
-    if(enc != NULL) {
-        if(enc->configOk())
-            ui.labelEncProfile->setText(tr("Selected encoder: <b>%1</b>")
-                .arg(EncoderBase::getEncoderName(encoder)));
-        else
-            ui.labelEncProfile->setText(tr("Selected encoder: <b>%1</b>")
-                .arg("Invalid encoder configuration!"));
-    }
-    else
-        ui.labelEncProfile->setText(tr("Selected encoder: <b>%1</b>")
-            .arg("Invalid encoder configuration!"));
     ui.wavtrimthreshold->setValue(RbSettings::value(RbSettings::WavtrimThreshold).toInt());
     emit settingsUpdated();
 }
@@ -125,7 +111,7 @@ void CreateVoiceWindow::saveSettings(void)
 {
     // save selected language
     RbSettings::setValue(RbSettings::VoiceLanguage,
-                         ui.comboLanguage->currentText());
+                         ui.comboLanguage->itemData(ui.comboLanguage->currentIndex()).toString());
     // save wavtrim threshold value
     RbSettings::setValue(RbSettings::WavtrimThreshold,
                          ui.wavtrimthreshold->value());

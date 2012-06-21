@@ -47,7 +47,7 @@ void usb_attach(void)
 
 void usb_drv_int_enable(bool enable)
 {
-    imx233_enable_interrupt(INT_SRC_USB_CTRL, enable);
+    imx233_icoll_enable_interrupt(INT_SRC_USB_CTRL, enable);
 }
 
 void INT_USB_CTRL(void)
@@ -69,7 +69,7 @@ void usb_enable(bool on)
 {
     if(on)
     {
-        imx233_enable_usb_pll(true);
+        imx233_clkctrl_enable_usb_pll(true);
         imx233_enable_usb_phy(true);
         imx233_enable_usb_controller(true);
         usb_core_init();
@@ -79,6 +79,6 @@ void usb_enable(bool on)
         usb_core_exit();
         imx233_enable_usb_controller(false);
         imx233_enable_usb_phy(false);
-        imx233_enable_usb_pll(false);
+        imx233_clkctrl_enable_usb_pll(false);
     }
 }

@@ -5,7 +5,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 # All files in this archive are subject to the GNU General Public License.
 # See the file COPYING in the source tree root for full license agreement.
@@ -19,8 +18,8 @@ unix:!mac:!noccache {
     CCACHE = $$system(which ccache)
     !isEmpty(CCACHE) {
         message("using ccache")
-        QMAKE_CXX = ccache g++
-        QMAKE_CC = ccache gcc
+        QMAKE_CXX = ccache $$QMAKE_CXX
+        QMAKE_CC = ccache $$QMAKE_CC
     }
 }
 
@@ -145,7 +144,8 @@ QMAKE_EXTRA_TARGETS += lrelease
 
 # Needed by QT on Win
 INCLUDEPATH = $$_PRO_FILE_PWD_ $$_PRO_FILE_PWD_/irivertools \
-            $$_PRO_FILE_PWD_/zlib $$_PRO_FILE_PWD_/base
+            $$_PRO_FILE_PWD_/zlib $$_PRO_FILE_PWD_/base \
+            $$_PRO_FILE_PWD_/zlib $$_PRO_FILE_PWD_/gui
 INCLUDEPATH += $$RBBASE_DIR/rbutil/ipodpatcher $$RBBASE_DIR/rbutil/sansapatcher \
             $$RBBASE_DIR/tools/rbspeex $$RBBASE_DIR/tools
 
@@ -191,6 +191,7 @@ win32 {
     # support.
     DEFINES += __USE_MINGW_ANSI_STDIO=1
     DEFINES += _CRT_SECURE_NO_WARNINGS
+    DEFINES += UNICODE
     LIBS += -lsetupapi -lnetapi32
 }
 win32:static {

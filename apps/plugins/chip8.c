@@ -1210,6 +1210,26 @@ CONFIG_KEYPAD == MROBE500_PAD
 #define CHIP8_KEY8 BUTTON_POWER
 #define CHIP8_KEY9 BUTTON_USER
 
+#elif (CONFIG_KEYPAD == HM60X_PAD)
+#define CHIP8_OFF  BUTTON_POWER
+#define CHIP8_KEY2 BUTTON_UP
+#define CHIP8_KEY4 BUTTON_DOWN
+#define CHIP8_KEY5 BUTTON_SELECT
+#define CHIP8_KEY6 BUTTON_RIGHT
+#define CHIP8_KEY8 BUTTON_LEFT
+
+#elif (CONFIG_KEYPAD == HM801_PAD)
+#define CHIP8_OFF  (BUTTON_POWER|BUTTON_SELECT)
+#define CHIP8_KEY1 BUTTON_PREV
+#define CHIP8_KEY2 BUTTON_UP
+#define CHIP8_KEY3 BUTTON_DOWN
+#define CHIP8_KEY4 BUTTON_LEFT
+#define CHIP8_KEY5 BUTTON_SELECT
+#define CHIP8_KEY6 BUTTON_RIGHT
+#define CHIP8_KEY7 BUTTON_NEXT
+#define CHIP8_KEY8 BUTTON_PLAY
+#define CHIP8_KEY9 BUTTON_POWER
+
 #else
 #error No keymap defined!
 #endif
@@ -1268,7 +1288,7 @@ static unsigned char beep[]={255,
 111,181,184,144, 17,148, 21,101,166,227,100, 86, 85, 85, 85}; 
 
 /* callback to request more mp3 data */
-static void callback(unsigned char** start, size_t* size)
+static void callback(const void** start, size_t* size)
 {
     *start = beep; /* give it the same frame again */
     *size = sizeof(beep);

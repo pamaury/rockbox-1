@@ -43,17 +43,17 @@ const static struct {
     { SystemInfo::DoomUrl,              "doom_url",             "" },
     { SystemInfo::ReleaseUrl,           "release_url",          "" },
     { SystemInfo::DailyUrl,             "daily_url",            "" },
-    { SystemInfo::ServerConfUrl,        "server_conf_url",      "" },
+    { SystemInfo::BuildInfoUrl,         "build_info_url",       "" },
     { SystemInfo::GenlangUrl,           "genlang_url",          "" },
     { SystemInfo::ThemesUrl,            "themes_url",           "" },
     { SystemInfo::ThemesInfoUrl,        "themes_info_url",      "" },
     { SystemInfo::RbutilUrl,            "rbutil_url",           "" },
-    { SystemInfo::BleedingInfo,         "bleeding_info",        "" },
     { SystemInfo::CurPlatformName,      ":platform:/name",      "" },
     { SystemInfo::CurManual,            ":platform:/manualname","rockbox-:platform:" },
     { SystemInfo::CurBootloaderMethod,  ":platform:/bootloadermethod", "none" },
     { SystemInfo::CurBootloaderName,    ":platform:/bootloadername", "" },
     { SystemInfo::CurBootloaderFile,    ":platform:/bootloaderfile", "" },
+    { SystemInfo::CurBootloaderFilter,  ":platform:/bootloaderfilter", "" },
     { SystemInfo::CurEncoder,           ":platform:/encoder",   "" },
     { SystemInfo::CurBrand,             ":platform:/brand",     "" },
     { SystemInfo::CurName,              ":platform:/name",      "" },
@@ -142,16 +142,16 @@ QStringList SystemInfo::platforms(enum SystemInfo::PlatformType type, QString va
     return result;
 }
 
-QMap<QString, QString> SystemInfo::languages(void)
+QMap<QString, QStringList> SystemInfo::languages(void)
 {
     ensureSystemInfoExists();
 
-    QMap<QString, QString> result;
+    QMap<QString, QStringList> result;
     systemInfos->beginGroup("languages");
     QStringList a = systemInfos->childKeys();
     for(int i = 0; i < a.size(); i++)
     {
-        result.insert(a.at(i), systemInfos->value(a.at(i), "null").toString());
+        result.insert(a.at(i), systemInfos->value(a.at(i), "null").toStringList());
     }
     systemInfos->endGroup();
     return result;

@@ -63,9 +63,6 @@
 /* define this if you have access to the quickscreen */
 #define HAVE_QUICKSCREEN
 
-/* define this if you have access to the pitchscreen */
-#define HAVE_PITCHSCREEN
-
 /* define this if you would like tagcache to build on this target */
 #define HAVE_TAGCACHE
 
@@ -93,8 +90,8 @@
 /* Define this if your LCD can be put to sleep. HAVE_LCD_ENABLE
    should be defined as well. */
 #ifndef BOOTLOADER
-//TODO: #define HAVE_LCD_SLEEP
-//TODO: #define HAVE_LCD_SLEEP_SETTING
+#define HAVE_LCD_SLEEP
+#define HAVE_LCD_SLEEP_SETTING
 #endif
 
 #define CONFIG_KEYPAD IPOD_4G_PAD
@@ -137,10 +134,10 @@
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x80000
 
-// TODO: Figure out real values
-#define BATTERY_CAPACITY_DEFAULT 400 /* default battery capacity */
+/* 6g has a standard battery of 550mAh, except for the thick 6g (2007 160gb) which has a standard battery of 850mAh */
+#define BATTERY_CAPACITY_DEFAULT 550 /* default battery capacity */
 #define BATTERY_CAPACITY_MIN     300 /* min. capacity selectable */
-#define BATTERY_CAPACITY_MAX     500 /* max. capacity selectable */
+#define BATTERY_CAPACITY_MAX     1000 /* max. capacity selectable */
 #define BATTERY_CAPACITY_INC      10 /* capacity increment */
 #define BATTERY_TYPES_COUNT        1 /* only one type */
 
@@ -204,8 +201,10 @@
 /* and doesn't handle them in the drive firmware */
 //#define MAX_PHYS_SECTOR_SIZE 4096
 
+#define HAVE_HARDWARE_CLICK
+
 /* Define this if you have adjustable CPU frequency */
-//#define HAVE_ADJUSTABLE_CPU_FREQ
+#define HAVE_ADJUSTABLE_CPU_FREQ
 
 #define BOOTFILE_EXT "ipod"
 #define BOOTFILE "rockbox." BOOTFILE_EXT
@@ -237,7 +236,7 @@
 #define CONFIG_USBOTG USBOTG_S3C6400X
 #define USB_VENDOR_ID 0x05AC
 #define USB_PRODUCT_ID 0x1261
-#define USB_NUM_ENDPOINTS 5
+#define USB_NUM_ENDPOINTS 6
 #define USE_ROCKBOX_USB
 #define USB_DEVBSS_ATTR __attribute__((aligned(16)))
 

@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0" >
  <class>InstallWindowFrm</class>
  <widget class="QDialog" name="InstallWindowFrm" >
@@ -9,14 +10,14 @@
     <x>0</x>
     <y>0</y>
     <width>644</width>
-    <height>500</height>
+    <height>448</height>
    </rect>
   </property>
   <property name="windowTitle" >
    <string>Install Rockbox</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2" >
-   <item rowspan="9" row="0" column="0" >
+   <item row="0" column="0" rowspan="9" >
     <widget class="QLabel" name="label" >
      <property name="text" >
       <string/>
@@ -48,21 +49,21 @@
       <item>
        <widget class="QRadioButton" name="radioStable" >
         <property name="text" >
-         <string>Rockbox &amp;stable</string>
+         <string>&amp;Stable release</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="radioArchived" >
+       <widget class="QRadioButton" name="radioCandidate" >
         <property name="text" >
-         <string>&amp;Archived Build</string>
+         <string>Release &amp;Candidate</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QRadioButton" name="radioCurrent" >
         <property name="text" >
-         <string>&amp;Current Build</string>
+         <string>&amp;Development build</string>
         </property>
        </widget>
       </item>
@@ -71,6 +72,12 @@
    </item>
    <item row="2" column="1" colspan="3" >
     <widget class="QGroupBox" name="groupBox_2" >
+     <property name="sizePolicy" >
+      <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding" >
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="title" >
       <string>Details</string>
      </property>
@@ -145,7 +152,7 @@
      <property name="sizeHint" stdset="0" >
       <size>
        <width>20</width>
-       <height>40</height>
+       <height>1</height>
       </size>
      </property>
     </spacer>
@@ -173,7 +180,7 @@
       <item row="1" column="2" >
        <widget class="QPushButton" name="changeBackup" >
         <property name="sizePolicy" >
-         <sizepolicy vsizetype="Fixed" hsizetype="Minimum" >
+         <sizepolicy hsizetype="Minimum" vsizetype="Fixed" >
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>

@@ -31,7 +31,7 @@
 #include "logf.h"
 
 #ifdef HAVE_LCD_ENABLE
-bool lcd_on; /* framebuffer-imx233.c */
+static bool lcd_on;
 #endif
 static unsigned lcd_yuv_options = 0;
 static int lcd_dcp_channel = -1;
@@ -53,13 +53,21 @@ static void setup_parameters(void)
 
 static void setup_lcd_pins(bool use_lcdif)
 {
+    /* WARNING
+     * the B1P22 and B1P24 pins are used by the tuner i2c! Do NOT drive
+     * them as lcd_dotclk and lcd_hsync or it will break the tuner! */
+    imx233_pinctrl_acquire_pin(1, 18, "lcd reset");
+    imx233_pinctrl_acquire_pin(1, 19, "lcd rs");
+    imx233_pinctrl_acquire_pin(1, 20, "lcd wr");
+    imx233_pinctrl_acquire_pin(1, 21, "lcd cs");
+    imx233_pinctrl_acquire_pin(1, 23, "lcd enable");
+    imx233_pinctrl_acquire_pin(1, 25, "lcd vsync");
+    imx233_pinctrl_acquire_pin_mask(1, 0x3ffff, "lcd data");
     if(use_lcdif)
     {
         imx233_set_pin_function(1, 25, PINCTRL_FUNCTION_GPIO); /* lcd_vsync */
         imx233_set_pin_function(1, 21, PINCTRL_FUNCTION_MAIN); /* lcd_cs */
-        imx233_set_pin_function(1, 22, PINCTRL_FUNCTION_GPIO); /* lcd_dotclk */
         imx233_set_pin_function(1, 23, PINCTRL_FUNCTION_GPIO); /* lcd_enable */
-        imx233_set_pin_function(1, 24, PINCTRL_FUNCTION_GPIO); /* lcd_hsync */
         imx233_set_pin_function(1, 18, PINCTRL_FUNCTION_MAIN); /* lcd_reset */
         imx233_set_pin_function(1, 19, PINCTRL_FUNCTION_MAIN); /* lcd_rs */
         imx233_set_pin_function(1, 16, PINCTRL_FUNCTION_MAIN); /* lcd_d16 */
@@ -70,15 +78,13 @@ static void setup_lcd_pins(bool use_lcdif)
     else
     {
         __REG_SET(HW_PINCTRL_MUXSEL(2)) = 0xffffffff; /* lcd_d{0-15} */
-        imx233_enable_gpio_output_mask(1, 0x3ffffff, false); /* lcd_{d{0-17},reset,rs,wr,cs,dotclk,enable,hsync,vsync} */
+        imx233_enable_gpio_output_mask(1, 0x2bfffff, false); /* lcd_{d{0-17},reset,rs,wr,cs,enable,vsync} */
         imx233_set_pin_function(1, 16, PINCTRL_FUNCTION_GPIO); /* lcd_d16 */
         imx233_set_pin_function(1, 17, PINCTRL_FUNCTION_GPIO); /* lcd_d17 */
         imx233_set_pin_function(1, 19, PINCTRL_FUNCTION_GPIO); /* lcd_rs */
         imx233_set_pin_function(1, 20, PINCTRL_FUNCTION_GPIO); /* lcd_wr */
         imx233_set_pin_function(1, 21, PINCTRL_FUNCTION_GPIO); /* lcd_cs */
-        imx233_set_pin_function(1, 22, PINCTRL_FUNCTION_GPIO); /* lcd_dotclk */
         imx233_set_pin_function(1, 23, PINCTRL_FUNCTION_GPIO); /* lcd_enable */
-        imx233_set_pin_function(1, 24, PINCTRL_FUNCTION_GPIO); /* lcd_hsync */
         imx233_set_pin_function(1, 25, PINCTRL_FUNCTION_GPIO); /* lcd_vsync */
     }
 }
@@ -151,10 +157,10 @@ static inline uint32_t decode_18_to_16(uint32_t a)
 static void setup_lcdif_clock(void)
 {
     /* the LCD seems to work at 24Mhz, so use the xtal clock with no divider */
-    imx233_enable_clock(CLK_PIX, false);
-    imx233_set_clock_divisor(CLK_PIX, 1);
-    imx233_set_bypass_pll(CLK_PIX, true); /* use XTAL */
-    imx233_enable_clock(CLK_PIX, true);
+    imx233_clkctrl_enable_clock(CLK_PIX, false);
+    imx233_clkctrl_set_clock_divisor(CLK_PIX, 1);
+    imx233_clkctrl_set_bypass_pll(CLK_PIX, true); /* use XTAL */
+    imx233_clkctrl_enable_clock(CLK_PIX, true);
 }
 
 static uint32_t i80_read_register(uint32_t data_out)
@@ -533,12 +539,12 @@ void lcd_update_rect(int x, int y, int w, int h)
      */
     if(w == LCD_WIDTH)
     {
-        memcpy((void *)FRAME, &lcd_framebuffer[y][x], w * h * sizeof(fb_data));
+        memcpy((void *)FRAME, FBADDR(x,y), w * h * sizeof(fb_data));
     }
     else
     {
         for(int i = 0; i < h; i++)
-            memcpy((fb_data *)FRAME + i * w, &lcd_framebuffer[y + i][x], w * sizeof(fb_data));
+            memcpy((fb_data *)FRAME + i * w, FBADDR(x,y + i), w * sizeof(fb_data));
     }
     /* WARNING The LCDIF has a limitation on the vertical count ! In 16-bit packed mode
      * (which we used, ie 16-bit per pixel, 2 pixels per 32-bit words), the v_count
@@ -599,10 +605,10 @@ void lcd_blit_yuv(unsigned char * const src[3],
     linecounter = height >> 1;
     
     #if LCD_WIDTH >= LCD_HEIGHT
-    dst     = &lcd_framebuffer[y][x];
+    dst     = FBADDR(x,y);
     row_end = dst + width;
     #else
-    dst     = &lcd_framebuffer[x][LCD_WIDTH - y - 1];
+    dst     = FBADDR(LCD_WIDTH - y - 1,x);
     row_end = dst + LCD_WIDTH * width;
     #endif
     

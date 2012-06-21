@@ -38,8 +38,8 @@ class InstallTalkWindow : public QDialog
         void change(void);
 
     private slots:
-        void browseFolder(void);
         void updateSettings(void);
+        void saveSettings(void);
 
     signals:
         void settingsUpdated(void);
@@ -49,6 +49,7 @@ class InstallTalkWindow : public QDialog
         TalkFileCreator* talkcreator;
         Ui::InstallTalkFrm ui;
         ProgressLoggerGui* logger;
+        QFileSystemModel *fsm;
 };
 
 #endif

@@ -22,7 +22,7 @@
 #include "tag_table.h"
 
 #include <string.h>
-#define BAR_PARAMS "*iiii|sN"
+#define BAR_PARAMS "?iiii|s*"
 /* The tag definition table */
 static const struct tag_info legal_tags[] = 
 {
@@ -34,6 +34,8 @@ static const struct tag_info legal_tags[] =
     { SKIN_TOKEN_ALIGN_LANGDIRECTION,   "ax", "", 0 },
     
     { SKIN_TOKEN_LOGICAL_IF,            "if", "TS[ITS]|D", SKIN_REFRESH_DYNAMIC },
+    { SKIN_TOKEN_LOGICAL_AND,           "and", "T*", SKIN_REFRESH_DYNAMIC },
+    { SKIN_TOKEN_LOGICAL_OR,            "or", "T*", SKIN_REFRESH_DYNAMIC },
     
     { SKIN_TOKEN_BATTERY_PERCENT,       "bl" , BAR_PARAMS, SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_BATTERY_VOLTS,         "bv", "", SKIN_REFRESH_DYNAMIC },
@@ -174,9 +176,9 @@ static const struct tag_info legal_tags[] =
     { SKIN_TOKEN_DISABLE_THEME,         "wd", "", 0|NOBREAK },
     { SKIN_TOKEN_DRAW_INBUILTBAR,       "wi", "", SKIN_REFRESH_STATIC|NOBREAK },
     
-    { SKIN_TOKEN_IMAGE_PRELOAD,         "xl", "SFII|I", 0|NOBREAK },
+    { SKIN_TOKEN_IMAGE_PRELOAD,         "xl", "SF|III", 0|NOBREAK },
     { SKIN_TOKEN_IMAGE_PRELOAD_DISPLAY, "xd", "S|[IT]I", 0 },
-    { SKIN_TOKEN_IMAGE_DISPLAY,         "x", "SFII", 0|NOBREAK },
+    { SKIN_TOKEN_IMAGE_DISPLAY,         "x", "SF|II", SKIN_REFRESH_STATIC|NOBREAK },
     
     { SKIN_TOKEN_LOAD_FONT,             "Fl" , "IF|I", 0|NOBREAK },
     { SKIN_TOKEN_ALBUMART_LOAD,         "Cl" , "IIII|ss", 0|NOBREAK },
@@ -189,10 +191,12 @@ static const struct tag_info legal_tags[] =
     { SKIN_TOKEN_VIEWPORT_CUSTOMLIST,   "Vp" , "IC", SKIN_REFRESH_DYNAMIC|NOBREAK },
     { SKIN_TOKEN_LIST_TITLE_TEXT,       "Lt" , "", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_LIST_ITEM_TEXT,        "LT", "|IS",  SKIN_REFRESH_DYNAMIC },
+    { SKIN_TOKEN_LIST_ITEM_ROW,         "LR", "",  SKIN_REFRESH_DYNAMIC },
+    { SKIN_TOKEN_LIST_ITEM_COLUMN,      "LC", "",  SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_LIST_ITEM_NUMBER,      "LN", "",  SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_LIST_TITLE_ICON,       "Li" , "", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_LIST_ITEM_ICON,        "LI", "|IS",  SKIN_REFRESH_DYNAMIC },
-    { SKIN_TOKEN_LIST_ITEM_CFG,         "Lb" , "Sii|S", SKIN_REFRESH_STATIC },
+    { SKIN_TOKEN_LIST_ITEM_CFG,         "Lb" , "Sii|S", SKIN_REFRESH_DYNAMIC},
     { SKIN_TOKEN_LIST_ITEM_IS_SELECTED, "Lc" , "", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_LIST_NEEDS_SCROLLBAR,  "LB", BAR_PARAMS, SKIN_REFRESH_DYNAMIC },
     
@@ -200,6 +204,7 @@ static const struct tag_info legal_tags[] =
     { SKIN_TOKEN_VIEWPORT_BGCOLOUR,       "Vb" , "s", SKIN_REFRESH_STATIC|NOBREAK },
     { SKIN_TOKEN_VIEWPORT_TEXTSTYLE,      "Vs" , "S|s", SKIN_REFRESH_STATIC },
     { SKIN_TOKEN_VIEWPORT_GRADIENT_SETUP, "Vg" , "SS|s", SKIN_REFRESH_STATIC|NOBREAK },
+    { SKIN_TOKEN_VIEWPORT_DRAWONBG,       "VB" , "", SKIN_REFRESH_STATIC|NOBREAK },
     
     { SKIN_TOKEN_VIEWPORT_CONDITIONAL,  "Vl" , "SIIiii", 0 },
     { SKIN_TOKEN_UIVIEWPORT_LOAD,       "Vi" , "sIIiii", 0 },
@@ -214,10 +219,10 @@ static const struct tag_info legal_tags[] =
     /* HACK Alert (jdgordon): The next two tags have hacks so we could
      * add a S param at the front without breaking old skins.
      * [SD]D <- handled by the callback, allows SD or S or D params
-     * [SI]III[SI]|SN -< SIIIIS|S or IIIIS|S 
+     * [SI]III[SI]|SN <- SIIIIS|S or IIIIS|S 
      *  keep in sync with parse_touchregion() and parse_lasttouch() */
     { SKIN_TOKEN_LASTTOUCH,             "Tl" , "|[SD]D", SKIN_REFRESH_DYNAMIC },
-    { SKIN_TOKEN_TOUCHREGION,           "T"  , "[SI]III[SI]|SN", 0|NOBREAK },
+    { SKIN_TOKEN_TOUCHREGION,           "T"  , "[SI]III[SI]|S*", 0|NOBREAK },
     
     { SKIN_TOKEN_HAVE_TOUCH,            "Tp", "", FEATURE_TAG },
     
@@ -234,11 +239,12 @@ static const struct tag_info legal_tags[] =
     { SKIN_TOKEN_REC_HOURS,             "Rh"   , "", SKIN_REFRESH_DYNAMIC },
     
     /* Skin variables */
-    { SKIN_TOKEN_VAR_SET,               "vs",   "SSI|I", SKIN_REFRESH_STATIC },
+    { SKIN_TOKEN_VAR_SET,               "vs",   "SSi|I", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_VAR_GETVAL,            "vg",   "S", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_VAR_TIMEOUT,           "vl",   "S|D", SKIN_REFRESH_DYNAMIC },
 
-    { SKIN_TOKEN_SUBSTRING,             "ss",   "IiT", SKIN_REFRESH_DYNAMIC },
+    { SKIN_TOKEN_SUBSTRING,             "ss",   "IiT|s", SKIN_REFRESH_DYNAMIC },
+    { SKIN_TOKEN_DRAWRECTANGLE,         "dr",   "IIii|ss", SKIN_REFRESH_STATIC },
     { SKIN_TOKEN_UNKNOWN,                ""   , "", 0 }
     /* Keep this here to mark the end of the table */
 };

@@ -7,7 +7,7 @@
 # $Id: checkwps.make 22680 2009-09-11 17:58:17Z gevaerts $
 #
 
-DBDEFINES=-g -DDEBUG -D__PCTOOL__ -DSIMULATOR
+DBDEFINES=-g -DDEBUG -D__PCTOOL__
 CFLAGS+=$(DBDEFINES)
 
 createsrc = $(shell cat $(1) > $(3); echo "\#if CONFIG_CODEC == SWCODEC" >> $(3); \
@@ -15,7 +15,7 @@ createsrc = $(shell cat $(1) > $(3); echo "\#if CONFIG_CODEC == SWCODEC" >> $(3)
                                      echo "\#endif" >> $(3); \
                                      echo $(3))
 
-METADATAS := $(subst $(ROOTDIR), ../.., $(wildcard $(ROOTDIR)/apps/metadata/*.c))
+METADATAS := $(subst $(ROOTDIR), ../.., $(wildcard $(ROOTDIR)/lib/rbcodec/metadata/*.c))
 
 SRCFILE := $(call createsrc, $(TOOLSDIR)/database/SOURCES, \
                              $(METADATAS), \
@@ -28,6 +28,9 @@ INCLUDES = -I$(ROOTDIR)/apps/gui \
            -I$(ROOTDIR)/firmware/include \
            -I$(ROOTDIR)/apps \
            -I$(ROOTDIR)/apps/recorder \
+           -I$(ROOTDIR)/lib/rbcodec \
+           -I$(ROOTDIR)/lib/rbcodec/metadata \
+           -I$(ROOTDIR)/lib/rbcodec/dsp \
            -I$(APPSDIR) \
            -I$(BUILDDIR) \
 

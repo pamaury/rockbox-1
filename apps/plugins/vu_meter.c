@@ -349,6 +349,18 @@
 #define LABEL_MENU   "Menu"
 #define LABEL_VOLUME "Up/Down"
 
+#elif (CONFIG_KEYPAD == HM60X_PAD) || \
+    (CONFIG_KEYPAD == HM801_PAD)
+#define VUMETER_QUIT       BUTTON_POWER
+#define VUMETER_HELP       BUTTON_RIGHT
+#define VUMETER_MENU       BUTTON_LEFT
+#define VUMETER_UP         BUTTON_UP
+#define VUMETER_DOWN       BUTTON_DOWN
+#define LABEL_HELP "RIGHT"
+#define LABEL_QUIT "POWER"
+#define LABEL_MENU "LEFT"
+#define LABEL_VOLUME "UP/DOWN"
+
 #else
 #error No keymap defined!
 #endif
@@ -692,9 +704,11 @@ static void analog_meter(void) {
     int left_peak = rb->mas_codec_readreg(0xC);
     int right_peak = rb->mas_codec_readreg(0xD);
 #elif (CONFIG_CODEC == SWCODEC)
-    int left_peak, right_peak;
+    static struct pcm_peaks peaks;
     rb->mixer_channel_calculate_peaks(PCM_MIXER_CHAN_PLAYBACK,
-                                      &left_peak, &right_peak);
+                                      &peaks);
+    #define left_peak peaks.left
+    #define right_peak peaks.right
 #endif
 
     if(vumeter_settings.analog_use_db_scale) {
@@ -750,8 +764,11 @@ static void digital_meter(void) {
     int left_peak = rb->mas_codec_readreg(0xC);
     int right_peak = rb->mas_codec_readreg(0xD);
 #elif (CONFIG_CODEC == SWCODEC)
-    int left_peak, right_peak;
-    rb->pcm_calculate_peaks(&left_peak, &right_peak);
+    static struct pcm_peaks peaks;
+    rb->mixer_channel_calculate_peaks(PCM_MIXER_CHAN_PLAYBACK,
+                                      &peaks);
+    #define left_peak peaks.left
+    #define right_peak peaks.right
 #endif
 
     if(vumeter_settings.digital_use_db_scale) {

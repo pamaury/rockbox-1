@@ -205,7 +205,7 @@ static int set_multiple_mode(int sectors);
 static int set_features(void);
 
 #ifndef ATA_TARGET_POLLING
-STATICIRAM ICODE_ATTR int wait_for_bsy(void)
+static ICODE_ATTR int wait_for_bsy(void)
 {
     long timeout = current_tick + HZ*30;
     
@@ -220,7 +220,7 @@ STATICIRAM ICODE_ATTR int wait_for_bsy(void)
     return 0; /* timeout */
 }
 
-STATICIRAM ICODE_ATTR int wait_for_rdy(void)
+static ICODE_ATTR int wait_for_rdy(void)
 {
     long timeout;
 
@@ -244,7 +244,7 @@ STATICIRAM ICODE_ATTR int wait_for_rdy(void)
 #define wait_for_rdy    ata_wait_for_rdy
 #endif
 
-STATICIRAM ICODE_ATTR int wait_for_start_of_transfer(void)
+static ICODE_ATTR int wait_for_start_of_transfer(void)
 {
     if (!wait_for_bsy())
         return 0;
@@ -252,7 +252,7 @@ STATICIRAM ICODE_ATTR int wait_for_start_of_transfer(void)
     return (ATA_IN8(ATA_ALT_STATUS) & (STATUS_BSY|STATUS_DRQ)) == STATUS_DRQ;
 }
 
-STATICIRAM ICODE_ATTR int wait_for_end_of_transfer(void)
+static ICODE_ATTR int wait_for_end_of_transfer(void)
 {
     if (!wait_for_bsy())
         return 0;
@@ -275,7 +275,7 @@ static void ata_led(bool on)
 #endif
 
 #ifndef ATA_OPTIMIZED_READING
-STATICIRAM ICODE_ATTR void copy_read_sectors(unsigned char* buf, int wordcount)
+static ICODE_ATTR void copy_read_sectors(unsigned char* buf, int wordcount)
 {
     unsigned short tmp = 0;
 
@@ -307,7 +307,7 @@ STATICIRAM ICODE_ATTR void copy_read_sectors(unsigned char* buf, int wordcount)
 #endif /* !ATA_OPTIMIZED_READING */
 
 #ifndef ATA_OPTIMIZED_WRITING
-STATICIRAM ICODE_ATTR void copy_write_sectors(const unsigned char* buf,
+static ICODE_ATTR void copy_write_sectors(const unsigned char* buf,
                                               int wordcount)
 {
     if ( (unsigned long)buf & 1)
@@ -1016,6 +1016,35 @@ static int STORAGE_INIT_ATTR ata_hard_reset(void)
     return ret;
 }
 
+// not putting this into STORAGE_INIT_ATTR, as ATA spec recommends to
+// re-read identify_info after soft reset. So we'll do that.
+static int identify(void)
+{
+    int i;
+
+    ATA_OUT8(ATA_SELECT, ata_device);
+
+    if(!wait_for_rdy()) {
+        DEBUGF("identify() - not RDY\n");
+        return -1;
+    }
+    ATA_OUT8(ATA_COMMAND, CMD_IDENTIFY);
+
+    if (!wait_for_start_of_transfer())
+    {
+        DEBUGF("identify() - CMD failed\n");
+        return -2;
+    }
+
+    for (i=0; i<SECTOR_SIZE/2; i++) {
+        /* the IDENTIFY words are already swapped, so we need to treat
+           this info differently that normal sector data */
+        identify_info[i] = ATA_SWAP_IDENTIFY(ATA_IN16(ATA_DATA));
+    }
+
+    return 0;
+}
+
 static int perform_soft_reset(void)
 {
 /* If this code is allowed to run on a Nano, the next reads from the flash will
@@ -1047,6 +1076,9 @@ static int perform_soft_reset(void)
 
     if (!ret)
         return -1;
+
+    if (identify())
+        return -5;
 
     if (set_features())
         return -2;
@@ -1090,6 +1122,9 @@ static int ata_power_on(void)
     if( ata_hard_reset() )
         return -1;
 
+    if (identify())
+        return -5;
+
     rc = set_features();
     if (rc)
         return rc * 10 - 2;
@@ -1122,33 +1157,6 @@ static int STORAGE_INIT_ATTR master_slave_detect(void)
         else
             return -1;
     }
-    return 0;
-}
-
-static int STORAGE_INIT_ATTR identify(void)
-{
-    int i;
-
-    ATA_OUT8(ATA_SELECT, ata_device);
-
-    if(!wait_for_rdy()) {
-        DEBUGF("identify() - not RDY\n");
-        return -1;
-    }
-    ATA_OUT8(ATA_COMMAND, CMD_IDENTIFY);
-
-    if (!wait_for_start_of_transfer())
-    {
-        DEBUGF("identify() - CMD failed\n");
-        return -2;
-    }
-
-    for (i=0; i<SECTOR_SIZE/2; i++) {
-        /* the IDENTIFY words are already swapped, so we need to treat
-           this info differently that normal sector data */
-        identify_info[i] = ATA_SWAP_IDENTIFY(ATA_IN16(ATA_DATA));
-    }
-
     return 0;
 }
 

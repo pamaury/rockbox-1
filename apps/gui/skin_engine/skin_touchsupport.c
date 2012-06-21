@@ -32,7 +32,7 @@
 #include "lang.h"
 #include "splash.h"
 #include "playlist.h"
-#include "dsp.h"
+#include "dsp_misc.h"
 
 /** Disarms all touchregions. */
 void skin_disarm_touchregions(struct wps_data *data)
@@ -266,9 +266,7 @@ int skin_get_touchaction(struct wps_data *data, int* edge_offset,
             {
                 global_settings.playlist_shuffle = 
                                             !global_settings.playlist_shuffle;
-#if CONFIG_CODEC == SWCODEC
-                dsp_set_replaygain();
-#endif
+                replaygain_update();
                 if (global_settings.playlist_shuffle)
                     playlist_randomise(NULL, current_tick, true);
                 else

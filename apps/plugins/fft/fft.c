@@ -266,6 +266,24 @@ GREY_INFO_STRUCT
 #   define FFT_FREQ_SCALE   BUTTON_DOWN
 #   define FFT_QUIT         BUTTON_BACK
 
+#elif (CONFIG_KEYPAD == HM60X_PAD)
+#   define FFT_PREV_GRAPH   BUTTON_LEFT
+#   define FFT_NEXT_GRAPH   BUTTON_RIGHT
+#   define FFT_AMP_SCALE    BUTTON_UP
+#   define FFT_FREQ_SCALE   BUTTON_DOWN
+#   define FFT_ORIENTATION  BUTTON_SELECT
+#   define FFT_WINDOW       (BUTTON_POWER|BUTTON_SELECT)
+#   define FFT_QUIT         BUTTON_POWER
+
+#elif (CONFIG_KEYPAD == HM801_PAD)
+#   define FFT_PREV_GRAPH   BUTTON_LEFT
+#   define FFT_NEXT_GRAPH   BUTTON_RIGHT
+#   define FFT_AMP_SCALE    BUTTON_UP
+#   define FFT_FREQ_SCALE   BUTTON_DOWN
+#   define FFT_ORIENTATION  BUTTON_SELECT
+#   define FFT_WINDOW       BUTTON_PLAY
+#   define FFT_QUIT         BUTTON_POWER
+
 #elif !defined(HAVE_TOUCHSCREEN)
 #error No keymap defined!
 #endif
@@ -1186,8 +1204,8 @@ static inline bool fft_init_fft_lib(void)
 static inline bool fft_get_fft(void)
 {
     int count;
-    int16_t *value =
-        (int16_t *) rb->mixer_channel_get_buffer(PCM_MIXER_CHAN_PLAYBACK, &count);
+    const int16_t *value =
+        rb->mixer_channel_get_buffer(PCM_MIXER_CHAN_PLAYBACK, &count);
     /* This block can introduce discontinuities in our data. Meaning, the
      * FFT will not be done a continuous segment of the signal. Which can
      * be bad. Or not.

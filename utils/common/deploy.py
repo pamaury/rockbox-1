@@ -29,7 +29,6 @@
 # If the required Qt installation isn't in PATH use --qmake option.
 # Tested on Linux and MinGW / W32
 #
-# requires pysvn package.
 # requires upx.exe in PATH on Windows.
 #
 
@@ -45,14 +44,9 @@ import time
 import hashlib
 import tempfile
 import string
+import gitscraper
 
 # modules that are not part of python itself.
-try:
-    import pysvn
-except ImportError:
-    print "Fatal: This script requires the pysvn package to run."
-    print "       See http://pysvn.tigris.org/."
-    sys.exit(-5)
 cpus = 1
 try:
     import multiprocessing
@@ -79,6 +73,8 @@ systemdlls = ['advapi32.dll',
         'winmm.dll',
         'winspool.drv',
         'ws2_32.dll']
+
+gitrepo = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 
 # == Functions ==
@@ -112,26 +108,9 @@ def which(executable):
     return ""
 
 
-def getsources(svnsrv, filelist, dest):
+def getsources(treehash, filelist, dest):
     '''Get the files listed in filelist from svnsrv and put it at dest.'''
-    client = pysvn.Client()
-    print "Checking out sources from %s, please wait." % svnsrv
-
-    for elem in filelist:
-        url = re.subn('/$', '', svnsrv + elem)[0]
-        destpath = re.subn('/$', '', dest + elem)[0]
-        # make sure the destination path does exist
-        d = os.path.dirname(destpath)
-        if not os.path.exists(d):
-            os.makedirs(d)
-        # get from svn
-        try:
-            client.export(url, destpath)
-        except:
-            print "SVN client error: %s" % sys.exc_value
-            print "URL: %s, destination: %s" % (url, destpath)
-            return -1
-    print "Checkout finished."
+    gitscraper.scrape_files(gitrepo, treehash, filelist, dest)
     return 0
 
 
@@ -492,6 +471,7 @@ def deploy():
     cross = ""
     buildid = None
     platform = sys.platform
+    treehash = gitscraper.get_refs(gitrepo)['refs/remotes/origin/HEAD']
     if sys.platform != "darwin":
         static = True
     else:
@@ -502,9 +482,6 @@ def deploy():
         if o in ("-p", "--project"):
             proj = a
             cleanup = False
-        if o in ("-t", "--tag"):
-            tag = a
-            svnbase = svnserver + "tags/" + tag + "/"
         if o in ("-a", "--add"):
             addfiles.append(a)
         if o in ("-n", "--makensis"):
@@ -517,6 +494,8 @@ def deploy():
             static = False
         if o in ("-k", "--keep-temp"):
             keeptemp = True
+        if o in ("-t", "--tree"):
+            treehash = a
         if o in ("-x", "--cross") and sys.platform != "win32":
             cross = a
             platform = "win32"
@@ -546,30 +525,33 @@ def deploy():
         # make sure the path doesn't contain backslashes to prevent issues
         # later when running on windows.
         workfolder = re.sub(r'\\', '/', w)
-        revision = getfolderrev(svnbase)
+        revision = gitscraper.describe_treehash(gitrepo, treehash)
+        # try to find a version number from describe output.
+        # WARNING: this is broken and just a temporary workaround!
+        v = re.findall('([\d\.a-f]+)', revision)
+        if v:
+            if v[-1].find('.') >= 0:
+                revision = "v" + v[-1]
+            else:
+                revision = v[-1]
         if buildid == None:
             versionextra = ""
         else:
             versionextra = "-" + buildid
-        if tag != "":
-            sourcefolder = workfolder + "/" + tag + "/"
-            archivename = tag + versionextra + "-src.tar.bz2"
-            # get numeric version part from tag
-            ver = "v" + re.sub('^[^\d]+', '', tag)
-        else:
-            sourcefolder = workfolder + "/" + program + "-r" + str(revision) + versionextra + "/"
-            archivename = program + "-r" + str(revision) + versionextra + "-src.tar.bz2"
-            ver = "r" + str(revision)
+        sourcefolder = workfolder + "/" + program + "-" + str(revision) + versionextra + "/"
+        archivename = program + "-" + str(revision) + versionextra + "-src.tar.bz2"
+        ver = str(revision)
         os.mkdir(sourcefolder)
     else:
         workfolder = "."
         sourcefolder = "."
         archivename = ""
     # check if project file explicitly given. If yes, don't get sources from svn
+    print "Version: %s" % revision
     if proj == "":
         proj = sourcefolder + project
         # get sources and pack source tarball
-        if not getsources(svnbase, svnpaths, sourcefolder) == 0:
+        if not getsources(treehash, svnpaths, sourcefolder) == 0:
             tempclean(workfolder, cleanup and not keeptemp)
             sys.exit(1)
 
@@ -587,10 +569,13 @@ def deploy():
                     # replacements made on the replacement string:
                     # %REVISION% is replaced with the revision number
                     replacement = re.sub("%REVISION%", str(revision), r[1])
-                    # %BUILD% is replace with buildid as passed on the command line
+                    newline = re.sub(r[0], replacement, newline)
+                    # %BUILD% is replaced with buildid as passed on the command line
                     if buildid != None:
-                        replacement = re.sub("%BUILDID%", str(buildid), replacement)
-                        newline = re.sub(r[0], replacement, newline)
+                        replacement = re.sub("%BUILDID%", "-" + str(buildid), replacement)
+                    else:
+                        replacement = re.sub("%BUILDID%", "", replacement)
+                    newline = re.sub(r[0], replacement, newline)
                 outfile.write(newline)
             outfile.close()
 
@@ -640,7 +625,7 @@ def deploy():
                 sys.exit(1)
         dllfiles = finddlls(sourcefolder + "/" + progexe[platform], \
                             [os.path.dirname(qm)], cross)
-        if dllfiles.count > 0:
+        if len(dllfiles) > 0:
             progfiles.extend(dllfiles)
         archive = zipball(progfiles, ver, sourcefolder, platform)
         # only when running native right now.
@@ -651,8 +636,16 @@ def deploy():
     elif platform == "darwin":
         archive = macdeploy(ver, sourcefolder, platform)
     else:
-        if os.uname()[4].endswith("64"):
-            ver += "-64bit"
+        if platform == "linux2":
+            for p in progfiles:
+                prog = sourcefolder + "/" + p
+                output = subprocess.Popen(["file", prog],
+                        stdout=subprocess.PIPE)
+                res = output.communicate()
+                if re.findall("ELF 64-bit", res[0]):
+                    ver += "-64bit"
+                    break
+
         archive = tarball(progfiles, ver, sourcefolder)
 
     # remove temporary files

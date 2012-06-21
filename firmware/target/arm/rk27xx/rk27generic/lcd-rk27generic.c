@@ -71,7 +71,7 @@ static void lcd_sleep(bool sleep)
     lcd_cmd(GRAM_WRITE);
 }
 
-void lcd_display_init()
+static void lcd_display_init(void)
 {
     unsigned int x, y;
 
@@ -173,6 +173,12 @@ void lcd_display_init()
     lcd_sleep(false);
 }
 
+void lcd_init_device(void)
+{
+    lcdif_init(LCDIF_18BIT);
+    lcd_display_init();
+}
+
 void lcd_update_rect(int x, int y, int width, int height)
 {
     int px = x, py = y;
@@ -191,7 +197,7 @@ void lcd_update_rect(int x, int y, int width, int height)
     for (py=y; py<pymax; py++)
     {
         for (px=x; px<pxmax; px++)
-            LCD_DATA = lcd_pixel_transform(lcd_framebuffer[py][px]);
+            LCD_DATA = lcd_pixel_transform(*FBADDR(px,py));
     }
 }
 

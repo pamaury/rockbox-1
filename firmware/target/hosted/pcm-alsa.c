@@ -75,7 +75,7 @@ static snd_pcm_sframes_t buffer_size = MIX_FRAME_SAMPLES * 32; /* ~16k */
 static snd_pcm_sframes_t period_size = MIX_FRAME_SAMPLES * 4;  /*  ~4k */
 static short *frames;
 
-static const char  *pcm_data = 0;
+static const void  *pcm_data = 0;
 static size_t       pcm_size = 0;
 
 #ifdef USE_ASYNC_CALLBACK
@@ -223,9 +223,11 @@ static bool fill_frames(void)
         if (!pcm_size)
         {
             new_buffer = true;
-            pcm_play_get_more_callback((void **)&pcm_data, &pcm_size);
-            if (!pcm_size || !pcm_data)
+            if (!pcm_play_dma_complete_callback(PCM_DMAST_OK, &pcm_data,
+                                                &pcm_size))
+            {
                 return false;
+            }
         }
         copy_n = MIN((ssize_t)pcm_size, frames_left*4);
         memcpy(&frames[2*(period_size-frames_left)], pcm_data, copy_n);
@@ -237,7 +239,7 @@ static bool fill_frames(void)
         if (new_buffer)
         {
             new_buffer = false;
-            pcm_play_dma_started_callback();
+            pcm_play_dma_status_callback(PCM_DMAST_STARTED);
         }
     }
     return true;

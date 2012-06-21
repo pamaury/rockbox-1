@@ -27,13 +27,14 @@
 class RockboxInfo
 {
 public:
-    RockboxInfo(QString mountpoint);
+    RockboxInfo(QString mountpoint, QString fname = "/.rockbox/rockbox-info.txt");
 
     QString version() {return m_version;}
     QString features(){return m_features;}
     QString targetID() {return m_targetid;}
     QString target() {return m_target;}
     int ram() { return m_ram; }
+    int voicefmt() { return m_voicefmt; }
     bool success() { return m_success; }
     QString revision(void) { return m_revision; }
     QString release(void) { return m_release; }
@@ -45,6 +46,7 @@ private:
     QString m_targetid;
     QString m_target;
     int m_ram;
+    int m_voicefmt;
     bool m_success;
 };
 

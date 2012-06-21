@@ -27,6 +27,9 @@ APPVERSION ?= $(shell $(TOP)/../tools/version.sh ../)
 CFLAGS += -DVERSION=\"$(APPVERSION)\"
 TARGET_DIR ?= $(shell pwd)/
 
+# use POSIX/C99 printf on windows
+CFLAGS += -D__USE_MINGW_ANSI_STDIO=1
+
 BINARY = $(OUTPUT)
 # when building a Windows binary add the correct file suffix
 ifeq ($(findstring CYGWIN,$(shell uname)),CYGWIN)
@@ -119,6 +122,11 @@ $(TARGET_DIR)lib$(OUTPUT)$(RBARCH).a: $(LIBOBJS) $(addprefix $(OBJDIR),$(EXTRALI
 clean:
 	rm -f $(OBJS) $(OUTPUT) $(TARGET_DIR)lib$(OUTPUT)*.a $(OUTPUT).dmg
 	rm -rf $(OUTPUT)-* i386 ppc $(OBJDIR)
+
+# extra tools
+BIN2C = $(TOP)/tools/bin2c
+$(BIN2C):
+	$(MAKE) -C $(TOP)/tools
 
 # OS X specifics
 $(OUTPUT).dmg: $(OUTPUT)

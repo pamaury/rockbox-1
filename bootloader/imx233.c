@@ -35,9 +35,13 @@
 #include "disk.h"
 #include "panic.h"
 #include "power.h"
+#include "power-imx233.h"
 #include "system-target.h"
 #include "fmradio_i2c.h"
 #include "version.h"
+#include "powermgmt.h"
+#include "partitions-imx233.h"
+#include "adc-imx233.h"
 
 #include "usb.h"
 
@@ -80,6 +84,9 @@ static void usb_mode(int connect_timeout)
     {
         /* Got the message - wait for disconnect */
         printf("Bootloader USB mode");
+        /* Enable power management to charge */
+        powermgmt_init();
+        adc_init();
 
         usb_acknowledge(SYS_USB_CONNECTED_ACK);
 
@@ -88,6 +95,24 @@ static void usb_mode(int connect_timeout)
             button = button_get_w_tmo(HZ/2);
             if(button == SYS_USB_DISCONNECTED)
                 break;
+            struct imx233_powermgmt_info_t info = imx233_powermgmt_get_info();
+            lcd_putsf(0, 7, "Charging status: %s",
+                info.state == CHARGE_STATE_DISABLED ? "disabled" :
+                info.state == CHARGE_STATE_ERROR ? "error" :
+                info.state == DISCHARGING ? "discharging" :
+                info.state == TRICKLE ? "trickle" :
+                info.state == TOPOFF ? "topoff" :
+                info.state == CHARGING ? "charging" : "<unknown>");
+            lcd_putsf(0, 8, "Battery: %d%%", battery_level());
+            lcd_putsf(0, 9, "Die temp: %d°C [%d, %d]",
+                adc_read(ADC_DIE_TEMP), IMX233_DIE_TEMP_HIGH,
+                IMX233_DIE_TEMP_LOW);
+            #ifdef ADC_BATT_TEMP
+            lcd_putsf(0, 10, "Batt temp: %d [%d, %d]",
+                adc_read(ADC_BATT_TEMP), IMX233_BATT_TEMP_HIGH,
+                IMX233_BATT_TEMP_LOW);
+            #endif
+            lcd_update();
         }
     }
 
@@ -123,18 +148,15 @@ void main(uint32_t arg, uint32_t addr)
 
     button_init();
 
-    //button_debug_screen();
     printf("Boot version: %s", RBVERSION);
     printf("arg=%x addr=%x", arg, addr);
+    printf("power up source: %x", __XTRACT(HW_POWER_STS, PWRUP_SOURCE));
 
-#ifdef SANSA_FUZEPLUS
-    extern void imx233_mmc_disable_window(void);
     if(arg == 0xfee1dead)
     {
-        printf("Disable MMC window.");
-        imx233_mmc_disable_window();
+        printf("Disable partitions window.");
+        imx233_partitions_enable_window(false);
     }
-#endif
 
     ret = storage_init();
     if(ret < 0)

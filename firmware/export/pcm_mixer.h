@@ -22,6 +22,8 @@
 #ifndef PCM_MIXER_H
 #define PCM_MIXER_H
 
+#include <sys/types.h>
+
 /** Simple config **/
 
 /* Length of PCM frames (always) */
@@ -38,8 +40,7 @@
 #define MIX_FRAME_SAMPLES 256
 #endif
 
-/* IAUDIO_M5 is very tight on IRAM */
-#if (defined(CPU_COLDFIRE) && !defined(IAUDIO_M5)) ||  defined(CPU_PP)
+#if defined(CPU_COLDFIRE) ||  defined(CPU_PP)
 /* For Coldfire, it's just faster
    For PortalPlayer, this also avoids more expensive cache coherency */
 #define DOWNMIX_BUF_IBSS        IBSS_ATTR
@@ -86,7 +87,7 @@ enum channel_status
 /* Start playback on a channel */
 void mixer_channel_play_data(enum pcm_mixer_channel channel,
                              pcm_play_callback_type get_more,
-                             unsigned char *start, size_t size);
+                             const void *start, size_t size);
 
 /* Pause or resume a channel (when started) */
 void mixer_channel_play_pause(enum pcm_mixer_channel channel, bool play);
@@ -105,11 +106,15 @@ enum channel_status mixer_channel_status(enum pcm_mixer_channel channel);
 size_t mixer_channel_get_bytes_waiting(enum pcm_mixer_channel channel);
 
 /* Return pointer to channel's playing audio data and the size remaining */
-void * mixer_channel_get_buffer(enum pcm_mixer_channel channel, int *count);
+const void * mixer_channel_get_buffer(enum pcm_mixer_channel channel, int *count);
 
 /* Calculate peak values for channel */
 void mixer_channel_calculate_peaks(enum pcm_mixer_channel channel,
-                                   int *left, int *right);
+                                   struct pcm_peaks *peaks);
+
+/* Adjust channel pointer by a given offset to support movable buffers */
+void mixer_adjust_channel_address(enum pcm_mixer_channel channel,
+                                  off_t offset);
 
 /* Stop ALL channels and PCM and reset state */
 void mixer_reset(void);

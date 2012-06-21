@@ -42,9 +42,6 @@
 /* define this if you have access to the quickscreen */
 #define HAVE_QUICKSCREEN
 
-/* define this if you have access to the pitchscreen */
-#define HAVE_PITCHSCREEN
-
 /* define this if you would like tagcache to build on this target */
 #define HAVE_TAGCACHE
 
@@ -80,6 +77,7 @@
 #define HAVE_IMX233_CODEC
 
 #define CONFIG_TUNER SI4700
+#define HAVE_RDS_CAP
 
 /* There is no hardware tone control */
 #define HAVE_SW_TONE_CONTROLS
@@ -132,8 +130,8 @@
 #define NUM_DRIVES 2
 #define HAVE_HOTSWAP
 
-/* Extra threads: touchpad */
-#define TARGET_EXTRA_THREADS 1
+/* Extra threads: touchpad and rds */
+#define TARGET_EXTRA_THREADS 2
 
 /* todo */
 #define BATTERY_CAPACITY_DEFAULT 550    /* default battery capacity */

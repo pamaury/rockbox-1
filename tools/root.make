@@ -23,6 +23,9 @@ TOOLS = $(TOOLSDIR)/rdf2binary $(TOOLSDIR)/convbdf \
 	$(TOOLSDIR)/uclpack $(TOOLSDIR)/mkboot $(TOOLSDIR)/iaudio_bl_flash.c \
 	$(TOOLSDIR)/iaudio_bl_flash.h $(TOOLSDIR)/mkwinceboot
 
+ifeq ($(MODELNAME),archosplayer)
+  TOOLS += $(TOOLSDIR)/player_unifont
+endif
 
 ifeq (,$(PREFIX))
 ifdef APP_TYPE
@@ -58,24 +61,34 @@ endif
 
 all: $(DEPFILE) build
 
-# Subdir makefiles. their primary purpose is to populate SRC, OTHER_SRC &
-# ASMDEFS_SRC but they also define special dependencies and compile rules
+# Subdir makefiles. their primary purpose is to populate SRC, OTHER_SRC,
+# ASMDEFS_SRC, CORE_LIBS and EXTRA_LIBS. But they also define special
+# dependencies and compile rules
 include $(TOOLSDIR)/tools.make
 
-ifeq (,$(findstring checkwps,$(APPSDIR)))
-  ifeq (,$(findstring database,$(APPSDIR)))
-    include $(FIRMDIR)/firmware.make
-    include $(ROOTDIR)/lib/skin_parser/skin_parser.make
-    include $(ROOTDIR)/apps/bitmaps/bitmaps.make
+ifeq (,$(findstring checkwps,$(APP_TYPE)))
+  ifeq (,$(findstring database,$(APP_TYPE)))
+    ifeq (,$(findstring warble,$(APP_TYPE)))
+      include $(FIRMDIR)/firmware.make
+      include $(ROOTDIR)/apps/bitmaps/bitmaps.make
+	  ifeq (,$(findstring bootloader,$(APPSDIR)))
+        include $(ROOTDIR)/lib/skin_parser/skin_parser.make
+        include $(ROOTDIR)/lib/tlsf/libtlsf.make
+      endif
+    endif
   endif
 endif
 
 #included before codecs.make and plugins.make so they see them)
 ifndef APP_TYPE
   include $(ROOTDIR)/lib/libsetjmp/libsetjmp.make
-  ifeq (arm,$(ARCH))
+  ifeq (arch_arm,$(ARCH))
     include $(ROOTDIR)/lib/arm_support/arm_support.make
   endif
+endif
+
+ifeq (arch_arm,$(ARCH))
+    include $(ROOTDIR)/lib/unwarminder/unwarminder.make
 endif
 
 ifneq (,$(findstring bootloader,$(APPSDIR)))
@@ -83,18 +96,19 @@ ifneq (,$(findstring bootloader,$(APPSDIR)))
 else ifneq (,$(findstring bootbox,$(APPSDIR)))
   BOOTBOXLDOPTS = -Wl,--gc-sections
   include $(APPSDIR)/bootbox.make
-else ifneq (,$(findstring checkwps,$(APPSDIR)))
+else ifneq (,$(findstring checkwps,$(APP_TYPE)))
   include $(APPSDIR)/checkwps.make
   include $(ROOTDIR)/lib/skin_parser/skin_parser.make
-else ifneq (,$(findstring database,$(APPSDIR)))
+else ifneq (,$(findstring database,$(APP_TYPE)))
   include $(APPSDIR)/database.make
+else ifneq (,$(findstring warble,$(APP_TYPE)))
+  include $(ROOTDIR)/lib/rbcodec/test/warble.make
+  include $(ROOTDIR)/lib/tlsf/libtlsf.make
+  include $(ROOTDIR)/lib/rbcodec/rbcodec.make
 else
   include $(APPSDIR)/apps.make
+  include $(ROOTDIR)/lib/rbcodec/rbcodec.make
   include $(APPSDIR)/lang/lang.make
-
-  ifdef SOFTWARECODECS
-    include $(APPSDIR)/codecs/codecs.make
-  endif
 
   ifdef ENABLEDPLUGINS
     include $(APPSDIR)/plugins/bitmaps/pluginbitmaps.make
@@ -179,14 +193,6 @@ LINKRAM := $(BUILDDIR)/ram.link
 ROMLDS := $(FIRMDIR)/rom.lds
 LINKROM := $(BUILDDIR)/rom.link
 
-ifeq (arm,$(ARCH))
-  LIBARMSUPPORT_LINK := -larm_support
-else
-  LIBARMSUPPORT_LINK :=
-endif
-
-
-
 $(LINKRAM): $(RAMLDS) $(CONFIGFILE)
 	$(call PRINTS,PP $(@F))
 	$(call preprocess2file,$<,$@,-DLOADADDRESS=$(LOADADDRESS))
@@ -195,27 +201,27 @@ $(LINKROM): $(ROMLDS)
 	$(call PRINTS,PP $(@F))
 	$(call preprocess2file,$<,$@,-DLOADADDRESS=$(LOADADDRESS))
 
-$(BUILDDIR)/rockbox.elf : $$(OBJ) $$(FIRMLIB) $$(VOICESPEEXLIB) $$(SKINLIB) $$(LIBARMSUPPORT) $$(LINKRAM)
+$(BUILDDIR)/rockbox.elf : $$(OBJ) $(FIRMLIB) $(VOICESPEEXLIB) $(CORE_LIBS) $$(LINKRAM)
 	$(call PRINTS,LD $(@F))$(CC) $(GCCOPTS) -Os -nostdlib -o $@ $(OBJ) \
 		-L$(BUILDDIR)/firmware -lfirmware \
-		-L$(BUILDDIR)/lib -lskin_parser $(LIBARMSUPPORT_LINK) \
-		-L$(BUILDDIR)/apps/codecs $(VOICESPEEXLIB:lib%.a=-l%) \
+		-L$(RBCODEC_BLD)/codecs $(call a2lnk, $(VOICESPEEXLIB)) \
+		-L$(BUILDDIR)/lib $(call a2lnk, $(CORE_LIBS)) \
 		-lgcc $(BOOTBOXLDOPTS) $(GLOBAL_LDOPTS) \
 		-T$(LINKRAM) -Wl,-Map,$(BUILDDIR)/rockbox.map
 
-$(BUILDDIR)/rombox.elf : $$(OBJ) $$(FIRMLIB) $$(VOICESPEEXLIB) $$(SKINLIB) $$(LIBARMSUPPORT) $$(LINKROM)
+$(BUILDDIR)/rombox.elf : $$(OBJ) $(FIRMLIB) $(VOICESPEEXLIB) $(CORE_LIBS) $$(LINKROM)
 	$(call PRINTS,LD $(@F))$(CC) $(GCCOPTS) -Os -nostdlib -o $@ $(OBJ) \
 		-L$(BUILDDIR)/firmware -lfirmware \
-		-L$(BUILDDIR)/lib -lskin_parser $(LIBARMSUPPORT_LINK) \
-		-L$(BUILDDIR)/apps/codecs $(VOICESPEEXLIB:lib%.a=-l%) \
-		-lgcc $(GLOBAL_LDOPTS) \
-        -T$(LINKROM) -Wl,-Map,$(BUILDDIR)/rombox.map
+		-L$(RBCODEC_BLD)/codecs $(call a2lnk, $(VOICESPEEXLIB)) \
+		-L$(BUILDDIR)/lib $(call a2lnk, $(CORE_LIBS)) \
+		-lgcc $(BOOTBOXLDOPTS) $(GLOBAL_LDOPTS) \
+		-T$(LINKROM) -Wl,-Map,$(BUILDDIR)/rombox.map
 
 $(BUILDDIR)/rockbox.bin : $(BUILDDIR)/rockbox.elf
-	$(call PRINTS,OC $(@F))$(OC) $(if $(filter yes, $(USE_ELF)), -S -x, -O binary) $< $@
+	$(call PRINTS,OC $(@F))$(call objcopy,$<,$@)
 
 $(BUILDDIR)/rombox.bin : $(BUILDDIR)/rombox.elf
-	$(call PRINTS,OC $(@F))$(OC) -O binary $< $@
+	$(call PRINTS,OC $(@F))$(call objcopy,$<,$@)
 
 #
 # If there's a flashfile defined for this target (rockbox.ucl for Archos

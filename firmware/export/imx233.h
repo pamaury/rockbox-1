@@ -64,13 +64,6 @@
 /* Timer runs at APBX speed which is derived from ref_xtal@24MHz */
 #define TIMER_FREQ      24000000
 
-#ifdef SANSA_FUZEPLUS
-#define TICK_TIMER_NR   0
-#define USER_TIMER_NR   1
-#else
-#error Select timers !
-#endif
-
 /* USBOTG */
 #define USB_QHARRAY_ATTR    __attribute__((section(".qharray"),nocommon,aligned(2048)))
 #define USB_NUM_ENDPOINTS   5
@@ -84,14 +77,24 @@
 #define __REG_SET(reg)  (*((volatile uint32_t *)(&reg + 1)))
 #define __REG_CLR(reg)  (*((volatile uint32_t *)(&reg + 2)))
 #define __REG_TOG(reg)  (*((volatile uint32_t *)(&reg + 3)))
+#define __REG_SET_CLR(reg, set) \
+    (*((volatile uint32_t *)(&reg + (set ? 1 : 2))))
 
 #define __BLOCK_SFTRST  (1 << 31)
 #define __BLOCK_CLKGATE (1 << 30)
 
-#define CACHEALIGN_BITS     4
+/* 32 bytes per cache line */
+#define CACHEALIGN_BITS     5
+
+#define ___ENSURE_ZERO(line, x) static uint8_t __ensure_zero_##line[-(x)] __attribute__((unused));
+#define __ENSURE_ZERO(x) ___ENSURE_ZERO(__LINE__, x)
+#define __ENSURE_MULTIPLE(x, y) __ENSURE_ZERO((x) % (y))
+#define __ENSURE_CACHELINE_MULTIPLE(x) __ENSURE_MULTIPLE(x, 1 << CACHEALIGN_BITS)
+#define __ENSURE_STRUCT_CACHE_FRIENDLY(name) __ENSURE_CACHELINE_MULTIPLE(sizeof(name))
 
 #define __XTRACT(reg, field)    ((reg & reg##__##field##_BM) >> reg##__##field##_BP)
 #define __XTRACT_EX(val, field)    (((val) & field##_BM) >> field##_BP)
 #define __FIELD_SET(reg, field, val) reg = (reg & ~reg##__##field##_BM) | (val << reg##__##field##_BP)
+#define __FIELD_SET_CLR(reg, field, set) __REG_SET_CLR(reg, set) = reg##__##field
 
 #endif /* __IMX233_H__ */
