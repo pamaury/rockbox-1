@@ -27,7 +27,7 @@
 
 void _backlight_set_brightness(int brightness)
 {
-    #if 0
+    #if 1
     /* Reference code */
     TCNTB0 = 0x3FF;
     TCMPB0 = brightness;
@@ -44,7 +44,7 @@ void _backlight_set_brightness(int brightness)
 
 bool _backlight_init(void)
 {
-    #if 0
+    #if 1
     S3C2440_GPIO_CONFIG(GPBCON, 0, GPIO_FUNCTION);
     #endif
     return true;

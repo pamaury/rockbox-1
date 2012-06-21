@@ -7,7 +7,7 @@
 #define _imageend       HW_ADDR(_initdata_end)
 #define _imagesize      _binary_size
 
-.data
+.section .vectors
 rom_ecec:
     .org        ROM_SIGNATURE_OFFSET
     .word       ROM_SIGNATURE

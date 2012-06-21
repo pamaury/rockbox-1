@@ -142,7 +142,7 @@ void main(void)
     printf("Loading firmware");
 
     /* Flush out anything pending first */
-    cpucache_invalidate();
+    commit_discard_idcache();
     loadbuffer = (unsigned char*) 0x31000000;
     buffer_size = (unsigned char*)0x31400000 - loadbuffer;
 
@@ -153,7 +153,7 @@ void main(void)
 
     system_prepare_fw_start();
     kernel_entry = (void*) loadbuffer;
-    cpucache_invalidate();
+    commit_discard_idcache();
     printf("Executing");
     kernel_entry();
     printf("ERR: Failed to boot");

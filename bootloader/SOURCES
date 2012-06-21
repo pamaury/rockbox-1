@@ -72,6 +72,7 @@ rk27xx.c
 show_logo.c
 #elif defined(MIO_C510)
 mio_c510.c
+show_logo.c
 #elif defined(SANSA_CONNECT)
 sansaconnect.c
 show_logo.c
