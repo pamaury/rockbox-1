@@ -117,7 +117,8 @@ bool parse_key(char **pstr, struct crypto_key_t *key)
     while(isspace(*str))
         str++;
     /* CRYPTO_KEY: 32 hex characters
-     * CRYPTO_USBOTP: usbotp(vid:pid) where vid and pid are hex numbers */
+     * CRYPTO_USBOTP: usbotp(vid:pid) where vid and pid are hex numbers
+     * CRYPTO_HWEMUL: hwemul(vid:pid) where vid and pid are hex numbers */
     if(isxdigit(str[0]))
     {
         if(strlen(str) < 32)
@@ -136,12 +137,21 @@ bool parse_key(char **pstr, struct crypto_key_t *key)
     }
     else
     {
+        key->method = CRYPTO_NONE;
         const char *prefix = "usbotp(";
-        if(strlen(str) < strlen(prefix))
+        if(strlen(str) >= strlen(prefix) && strncmp(str, prefix, strlen(prefix)) == 0)
+        {
+            str += strlen(prefix);
+            key->method = CRYPTO_USBOTP;
+        }
+        const char *prefix2 = "hwemul(";
+        if(strlen(str) >= strlen(prefix2) && strncmp(str, prefix2, strlen(prefix2)) == 0)
+        {
+            str += strlen(prefix2);
+            key->method = CRYPTO_HWEMUL;
+        }
+        if(key->method == CRYPTO_NONE)
             return false;
-        if(strncmp(str, prefix, strlen(prefix)) != 0)
-            return false;
-        str += strlen(prefix);
         /* vid */
         long vid = strtol(str, &str, 16);
         if(vid < 0 || vid > 0xffff)
@@ -155,7 +165,6 @@ bool parse_key(char **pstr, struct crypto_key_t *key)
         if(*str++ != ')')
             return false;
         *pstr = str;
-        key->method = CRYPTO_USBOTP;
         key->u.vid_pid = vid << 16 | pid;
         return true;
     }
@@ -255,6 +264,9 @@ void print_key(struct crypto_key_t *key, bool newline)
             break;
         case CRYPTO_USBOTP:
             printf("USB-OTP(%04x:%04x)", key->u.vid_pid >> 16, key->u.vid_pid & 0xffff);
+            break;
+        case CRYPTO_HWEMUL:
+            printf("HWEMUL(%04x:%04x)", key->u.vid_pid >> 16, key->u.vid_pid & 0xffff);
             break;
         case CRYPTO_NONE:
             printf("none");

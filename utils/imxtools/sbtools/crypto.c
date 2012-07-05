@@ -39,6 +39,7 @@ void crypto_setup(enum crypto_method_t method, void *param)
             memcpy(key, param, sizeof(key));
             break;
         case CRYPTO_USBOTP:
+        case CRYPTO_HWEMUL:
         {
             uint32_t value = *(uint32_t *)param;
             usb_vid = value >> 16;
@@ -64,7 +65,7 @@ int crypto_apply(
         return CRYPTO_ERROR_SUCCESS;
     }
     #ifdef CRYPTO_LIBUSB
-    else if(cur_method == CRYPTO_USBOTP)
+    else if(cur_method == CRYPTO_USBOTP || cur_method == CRYPTO_HWEMUL)
     {
         if(out_cbc_mac && !encrypt)
             memcpy(*out_cbc_mac, in_data + 16 * (nr_blocks - 1), 16);
@@ -73,7 +74,7 @@ int crypto_apply(
         libusb_context *ctx;
         /* init library */
         libusb_init(&ctx);
-        libusb_set_debug(NULL,3);
+        libusb_set_debug(ctx,3);
         /* open device */
         handle = libusb_open_device_with_vid_pid(ctx, usb_vid, usb_pid);
         if(handle == NULL)
@@ -107,7 +108,7 @@ int crypto_apply(
                     endp = &config->interface[intf].altsetting[intf_alt].endpoint[ep];
                     if((endp->bmAttributes & LIBUSB_TRANSFER_TYPE_MASK) == LIBUSB_TRANSFER_TYPE_INTERRUPT &&
                             (endp->bEndpointAddress & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN)
-                        goto Lfound;
+                        goto Lfound2;
                 }
         libusb_close(handle);
         printf("usbotp: No suitable endpoint found\n");
@@ -118,7 +119,7 @@ int crypto_apply(
             printf("usbotp: use interface %d, alt %d\n", intf, intf_alt);
             printf("usbotp: use endpoint %d\n", endp->bEndpointAddress);
         }
-        Lfound:
+        Lfound2:
         if(libusb_claim_interface(handle, intf) != 0)
         {
             if(g_debug)
@@ -130,9 +131,22 @@ int crypto_apply(
         unsigned char *buffer = xmalloc(buffer_size);
         memcpy(buffer, iv, 16);
         memcpy(buffer + 16, in_data, 16 * nr_blocks);
-        int  ret = libusb_control_transfer(handle,
-            LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_DEVICE,
-            0xaa, encrypt ? 0xeeee : 0xdddd, 0, buffer, buffer_size, 1000);
+        int ret;
+
+        if(cur_method == CRYPTO_USBOTP)
+        {
+            ret = libusb_control_transfer(handle,
+                LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_DEVICE,
+                0xaa, encrypt ? 0xeeee : 0xdddd, 0, buffer, buffer_size, 1000);
+        }
+        else if(cur_method == CRYPTO_HWEMUL)
+        {
+            ret = libusb_control_transfer(handle,
+                LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_DEVICE,
+                5, encrypt ? 1 : 0, 0, buffer, buffer_size, 1000);
+        }
+        else
+            ret = -1;
         if(ret < 0)
         {
             if(g_debug)

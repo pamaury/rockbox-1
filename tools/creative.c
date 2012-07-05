@@ -140,7 +140,9 @@ static const struct device_info devices[] =
     /* Creative ZEN V */
     {"C\0r\0e\0a\0t\0i\0v\0e\0 \0Z\0E\0N\0 \0V",                                  42, null_key_v4},
     /* Creative ZEN */
-    {"C\0r\0e\0a\0t\0i\0v\0e\0 \0Z\0E\0N",                                        48, null_key_v3}
+    {"C\0r\0e\0a\0t\0i\0v\0e\0 \0Z\0E\0N",                                        48, null_key_v3},
+    /* Creative ZEN X-Fi */
+    {"C\0r\0e\0a\0t\0i\0v\0e\0 \0Z\0E\0N\0 \0X\0-\0F\0i\0",                       34, null_key_v4}
 };
 
 /*
@@ -154,6 +156,8 @@ static int make_ciff_file(const unsigned char *inbuf, unsigned int length,
                           unsigned char *outbuf, int device)
 {
     unsigned char key[20];
+    unsigned offset = 0;
+    
     memcpy(outbuf, "FFIC", 4);
     int2le(length+90, &outbuf[4]);
     memcpy(&outbuf[8], "FNIC", 4);
@@ -161,19 +165,32 @@ static int make_ciff_file(const unsigned char *inbuf, unsigned int length,
     memcpy(&outbuf[0x10], devices[device].cinf, devices[device].cinf_size);
     memset(&outbuf[0x10+devices[device].cinf_size], 0,
            96 - devices[device].cinf_size);
-    memcpy(&outbuf[0x70], "ATAD", 4);
-    int2le(length+32, &outbuf[0x74]);
-    memcpy(&outbuf[0x78], "H\0j\0u\0k\0e\0b\0o\0x\0\x32\0.\0j\0r\0m",
-           25); /*Unicode encoded*/
-    memset(&outbuf[0x78+25], 0, 32);
-    memcpy(&outbuf[0x98], inbuf, length);
-    memcpy(&outbuf[0x98+length], "LLUN", 4);
-    int2le(20, &outbuf[0x98+length+4]);
+    
+    if(device == ZENXFI)
+    {
+        int2le(0xa9544c20, &outbuf[0x70]);
+        int2le(length, &outbuf[0x74]);
+
+        offset = 0x78;
+    }
+    else
+    {
+        memcpy(&outbuf[0x70], "ATAD", 4);
+        int2le(length+32, &outbuf[0x74]);
+        memcpy(&outbuf[0x78], "H\0j\0u\0k\0e\0b\0o\0x\0\x32\0.\0j\0r\0m",
+            25); /*Unicode encoded*/
+        memset(&outbuf[0x78+25], 0, 32);
+
+        offset = 0x89;
+    }
+    memcpy(&outbuf[offset], inbuf, length);
+    memcpy(&outbuf[offset+length], "LLUN", 4);
+    int2le(20, &outbuf[offset+length+4]);
     /* Do checksum */
     hmac_sha1((unsigned char *)devices[device].null, strlen(devices[device].null),
-             outbuf, 0x98+length, key);
-    memcpy(&outbuf[0x98+length+8], key, 20);
-    return length+0x90+0x1C+8;
+             outbuf, offset+length, key);
+    memcpy(&outbuf[offset+length+8], key, 20);
+    return length+offset+0x1C;
 }
 
 static int elf_convert(const unsigned char *inbuf, unsigned char *outbuf)
@@ -287,13 +304,21 @@ int zvm_encode(const char *iname, const char *oname, int device, bool enable_cif
         printf("Out of memory!\n");
         return -1;
     }
-    length = make_jrm_file(buf, outbuf);
-    free(buf);
-    if(length < 0)
+    if(device == ZENXFI && enable_ciff)
     {
-        free(outbuf);
-        printf("Error in making JRM file!\n");
-        return -1;
+        memcpy(outbuf, buf, length);
+        free(buf);
+    }
+    else
+    {
+        length = make_jrm_file(buf, outbuf);
+        free(buf);
+        if(length < 0)
+        {
+            free(outbuf);
+            printf("Error in making JRM file!\n");
+            return -1;
+        }
     }
     if(enable_ciff)
     {

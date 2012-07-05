@@ -109,7 +109,7 @@ void usage(void)
            "\t-ipod5g ipod firmware partition format (5th Gen - aka Video)\n"
            "\t-creative=X Creative firmware structure format\n"
            "\t            (X values: zvm, zvm60, zenvision\n"
-           "\t                       zenv, zen\n");
+           "\t                       zenv, zen, zenxfi)\n");
     printf("\t-gigabeat Toshiba Gigabeat F/X format\n"
            "\t-gigabeats Toshiba Gigabeat S format\n"
            "\t-mi4v2  PortalPlayer .mi4 format (revision 010201)\n"
@@ -451,6 +451,8 @@ int main (int argc, char** argv)
             return zvm_encode(iname, oname, ZENV, creative_enable_ciff);
         else if(!strcmp(&argv[1][10], "zen"))
             return zvm_encode(iname, oname, ZEN, creative_enable_ciff);
+        else if(!strcmp(&argv[1][10], "zenxfi"))
+            return zvm_encode(iname, oname, ZENXFI, creative_enable_ciff);
         else
         {
             fprintf(stderr, "unsupported Creative device: %s\n", &argv[1][10]);

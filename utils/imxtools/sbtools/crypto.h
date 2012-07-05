@@ -49,11 +49,13 @@ enum crypto_method_t
     CRYPTO_KEY, /* key */
     CRYPTO_XOR_KEY, /* XOR key */
     CRYPTO_USBOTP, /* use usbotp device */
+    CRYPTO_HWEMUL, /* use hwemul device */
 };
 
 /* parameter can be:
  * - CRYPTO_KEY: array of 16-bytes (the key)
- * - CRYPTO_USBOTP: 32-bit integer: vid << 16 | pid */
+ * - CRYPTO_USBOTP: 32-bit integer: vid << 16 | pid
+ * - CRYPTO_HWEMUL: 32-bit integer: vid << 16 | pid */
 void crypto_setup(enum crypto_method_t method, void *param);
 
 #define CRYPTO_ERROR_SUCCESS    0
