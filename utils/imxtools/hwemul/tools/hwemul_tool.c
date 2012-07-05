@@ -26,6 +26,7 @@
 #include <stdbool.h>
 
 bool g_quiet = false;
+
 struct hwemul_device_t hwdev;
 struct hwemul_soc_t *cur_soc = NULL;
 
@@ -344,6 +345,7 @@ int do_command()
     return ret;
 }
 
+
 void usage(void)
 {
     printf("hwemul_tool, compiled with hwemul %d.%d.%d\n",
@@ -416,6 +418,7 @@ int main(int argc, char **argv)
             libusb_get_bus_number(mydev),
             libusb_get_device_address(mydev));
     }
+
     hwdev.handle = handle;
     if(hwemul_probe(&hwdev))
     {

@@ -34,10 +34,22 @@ SBLOADER=$(SBTOOLS)/sbloader
 SBLOADER_CMD=0 $(EXEC_SB)
 SBLOADER_CMD_3700=0 $(EXEC_SB_3700)
 
+ZENUTILS=../../../zenutils/bin/Linux/
+ZEN_CRYPT=$(ZENUTILS)/zen_crypt
+FIRMWARE_MAKE=$(ZENUTILS)/firmware_make
+#ZEN_VERBOSE=-V
+ZEN_VERBOSE=
+
 TOOLS=../../../../tools/
 SCRAMBLE=$(TOOLS)/scramble
 
-EXEC=$(EXEC_SB) $(EXEC_SB_3700) $(EXEC_ELF) $(EXEC_ELF_3700)
+EXEC_ZENXFI_JRM=zenxfi.jrm
+EXEC_ZENXFI_JRM_CRYPT=zenxfi.lt
+EXEC_ZENXFI=zenxfi_nk.bin
+
+TMP=$(EXEC_ZENXFI_JRM) $(EXEC_ZENXFI_JRM_CRYPT)
+
+EXEC=$(EXEC_SB) $(EXEC_SB_3700) $(EXEC_ZENXFI) $(EXEC_ELF) $(EXEC_ELF_3700)
 
 all: $(EXEC)
 
@@ -81,6 +93,16 @@ $(EXEC_ELF_3700): $(OBJ_3700) link.lds
 $(EXEC_SB_3700): $(EXEC_ELF_3700)
 	$(ELF2SB) $(ELF2SB_CMD) $(ELF2SB_KEY) -o $@
 
+$(EXEC_ZENXFI_JRM): $(EXEC_ELF_3700)
+	$(SCRAMBLE) -creative=zenxfi -no-ciff $< $@
+
+$(EXEC_ZENXFI_JRM_CRYPT): $(EXEC_ZENXFI_JRM)
+	$(ZEN_CRYPT) -e $(ZEN_VERBOSE) -k "ZEN X-Fi" -m TL -i $< -o $@
+
+$(EXEC_ZENXFI): $(EXEC_ZENXFI_JRM_CRYPT)
+	$(FIRMWARE_MAKE) -m zenxfi_nk.mk $(ZEN_VERBOSE) -f $@
+	$(ZEN_CRYPT) $(ZEN_VERBOSE) -s -k "ZEN X-Fi" -i $@
+
 sbload: $(EXEC_SB)
 	$(SBLOADER) $(SBLOADER_CMD)
 
@@ -88,4 +110,4 @@ sbload3700: $(EXEC_SB_3700)
 	$(SBLOADER) $(SBLOADER_CMD_3700)
 
 clean:
-	rm -rf $(OBJ) $(OBJ_3700) $(DEPS) $(EXEC) *.map
+	rm -rf $(OBJ) $(OBJ_3700) $(DEPS) $(EXEC) $(TMP)
