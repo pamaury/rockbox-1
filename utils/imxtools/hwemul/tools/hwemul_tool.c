@@ -27,6 +27,7 @@
 
 bool g_quiet = false;
 
+bool g_quiet = false;
 struct hwemul_device_t hwdev;
 struct hwemul_soc_t *cur_soc = NULL;
 
@@ -344,7 +345,6 @@ int do_command()
     free(line);
     return ret;
 }
-
 
 void usage(void)
 {
