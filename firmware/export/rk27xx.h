@@ -555,8 +555,18 @@
 #define PHY_TEST_EN            (*(volatile unsigned long *)(AHB0_UDC + 0x00))
 #define PHY_TEST               (*(volatile unsigned long *)(AHB0_UDC + 0x04))
 #define DEV_CTL                (*(volatile unsigned long *)(AHB0_UDC + 0x08))
+#define DEV_RMTWKP              (1<<2)
+#define DEV_SELF_PWR            (1<<3)
+#define DEV_SOFT_CN             (1<<4)
+#define DEV_RESUME              (1<<5)
+#define DEV_PHY16BIT            (1<<6)
+#define SOFT_POR                (1<<7)
+#define CSR_DONE                (1<<8)
 
 #define DEV_INFO               (*(volatile unsigned long *)(AHB0_UDC + 0x10))
+#define DEV_EN                  (1 << 7)
+#define VBUS_STS                (1 << 20)
+
 #define EN_INT                 (*(volatile unsigned long *)(AHB0_UDC + 0x14))
 #define EN_SOF_INTR            (1<<0)
 #define EN_SETUP_INTR          (1<<1)
@@ -612,6 +622,10 @@
 /* bits 27-31 reserved */
 
 #define INTCON                 (*(volatile unsigned long *)(AHB0_UDC + 0x1C))
+#define UDC_INTEN               (1<<0)
+#define UDC_INTEDGE_TRIG        (1<<1)
+#define UDC_INTHIGH_ACT         (1<<2)
+
 #define SETUP1                 (*(volatile unsigned long *)(AHB0_UDC + 0x20))
 #define SETUP2                 (*(volatile unsigned long *)(AHB0_UDC + 0x24))
 #define AHBCON                 (*(volatile unsigned long *)(AHB0_UDC + 0x28))

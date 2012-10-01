@@ -28,19 +28,19 @@
 #include "system.h"
 #include "system-target.h"
 
-int usb_status = USB_EXTRACTED;
-
 void usb_init_device(void)
 {
+    _logf("usb_init_device");
+    usb_drv_startup();
 }
 
 void usb_attach(void)
 {
-    usb_enable(true);
 }
 
 void usb_enable(bool on)
 {
+    _logf("usb_enable(%d)", on);
     if(on)
         usb_core_init();
     else
