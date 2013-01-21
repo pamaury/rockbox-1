@@ -1928,6 +1928,8 @@ static int radio_callback(int btn, struct gui_synclist *lists)
         simplelist_addline(SIMPLELIST_ADD_LINE,"rssi_tone: 0x%x", nfo.rssi_tone);
         simplelist_addline(SIMPLELIST_ADD_LINE,"pilotcorrection: 0x%x", nfo.pilotcorrection);
         simplelist_addline(SIMPLELIST_ADD_LINE,"chipid: 0x%x", nfo.chipid);
+        for(int i = 0; i < 6; i++)
+            simplelist_addline(SIMPLELIST_ADD_LINE,"init%d: 0x%x", i + 1, nfo.initialization[i]);
     }
 #endif /* STFM1000 */
 

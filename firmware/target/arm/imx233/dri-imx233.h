@@ -28,7 +28,10 @@
 #define HW_DRI_BASE             0x80074000
 
 #define HW_DRI_CTRL             (*(volatile uint32_t *)(HW_DRI_BASE + 0x0))
-#define HW_DRI_CTRL__RUN        (1 << 0)
+#define HW_DRI_CTRL__RUN            (1 << 0)
+#define HW_DRI_CTRL__ATTENTION_IRQ  (1 << 1)
+#define HW_DRI_CTRL__PILOT_SYNC_LOSS_IRQ    (1 << 2)
+#define HW_DRI_CTRL__OVERFLOW_IRQ   (1 << 3)
 #define HW_DRI_CTRL__REACQUIRE_PHASE    (1 << 15)
 #define HW_DRI_CTRL__ENABLE_INPUTS  (1 << 29)
 
@@ -39,6 +42,8 @@
 #define HW_DRI_TIMING__PILOT_REP_RATE_BM    (0xf << 16)
 
 #define HW_DRI_STAT             (*(volatile uint32_t *)(HW_DRI_BASE + 0x20))
+#define HW_DRI_STAT__PILOT_PHASE_BP 16
+#define HW_DRI_STAT__PILOT_PHASE_BM (0xf << 16)
 
 #define HW_DRI_DATA             (*(volatile uint32_t *)(HW_DRI_BASE + 0x30))
 
@@ -50,6 +55,10 @@ struct imx233_dri_info_t
 {
     bool running;
     bool inputs_enabled;
+    bool attention;
+    bool pilot_sync_loss;
+    bool overflow;
+    int pilot_phase;
 };
 
 void imx233_dri_init(void);

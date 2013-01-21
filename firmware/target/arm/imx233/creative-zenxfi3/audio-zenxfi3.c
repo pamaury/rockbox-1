@@ -53,8 +53,9 @@ static void select_audio_path(void)
         init();
     /* route audio to HP */
     imx233_set_gpio_output(1, 30, true);
-
-    if(input_source == AUDIO_SRC_PLAYBACK)
+    _logf("select_audio_path: input=%d flags=%d output=%d", input_source,
+        input_flags, output_source);
+    if(input_source == AUDIO_SRC_PLAYBACK || input_source == AUDIO_SRC_FMRADIO)
         imx233_audioout_select_hp_input(false);
     else
         imx233_audioout_select_hp_input(true);

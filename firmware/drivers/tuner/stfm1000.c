@@ -57,7 +57,6 @@ static int stfm1000_write(uint8_t reg, uint32_t val)
     return fmradio_i2c_write(STFM100_I2C_ADDR, buf, 5);
 }
 
-
 static int stfm1000_write_masked(int reg, int val, int mask)
 {
     uint32_t tmp;
@@ -190,6 +189,8 @@ static int stfm1000_set_frequency(int freq)
     if (ret != 0)
         goto err;
 
+    stfm1000_set_bits(STFM1000_INITIALIZATION2, STFM1000_RDS_ENABLE);
+
     return 0;
 err:
     return -1;
@@ -204,6 +205,8 @@ void stfm1000_dbg_info(struct stfm1000_dbg_info *nfo)
     stfm1000_read(STFM1000_RSSI_TONE, &nfo->rssi_tone);
     stfm1000_read(STFM1000_PILOTCORRECTION, &nfo->pilotcorrection);
     stfm1000_read(STFM1000_CHIPID, &nfo->chipid);
+    for(int i = 0; i < 6; i++)
+        stfm1000_read(STFM1000_INITIALIZATION1 + i * 4, &nfo->initialization[i]);
 }
 
 static void stfm1000_dp_enable(bool enable)
@@ -394,9 +397,8 @@ void stfm1000_init(void)
     stfm1000_write(STFM1000_MIXFILT, 0x00007205);
     stfm1000_write(STFM1000_ADC, 0x001B3282);
     stfm1000_write(STFM1000_ATTENTION, 0x0000003F);
-    
+
     stfm1000_dp_enable(true);
-    stfm_dri_enable(true);
 }
 
 static void stfm1000_sleep(bool sleep)
@@ -458,9 +460,12 @@ int stfm1000_set(int setting, int value)
         break;
 
     case RADIO_FREQUENCY:
+        stfm_dri_enable(false);
+        imx233_dri_enable(false);
+        imx233_dri_enable(true);
+        stfm_dri_enable(true);
         stfm1000_set_frequency(value / 1000);
         stfm1000_optimise_channel();
-        imx233_dri_enable(true);
         break;
 
     case RADIO_SCAN_FREQUENCY:
