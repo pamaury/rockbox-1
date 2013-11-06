@@ -37,7 +37,7 @@
 
 /* Prototype: void *memcpy(void *dest, const void *src, size_t n); */
 
-    .section    .icode,"ax",%progbits
+    .section    .text.memcpy,"ax",%progbits
 
     .align      2
     .global     memcpy

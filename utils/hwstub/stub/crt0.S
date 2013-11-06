@@ -1,4 +1,4 @@
-.section    .text,"ax",%progbits
+.section    .text.start,"ax",%progbits
 .code       32
 .align      0x04
 .global     start

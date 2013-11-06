@@ -46,6 +46,8 @@ void vuprintf(
     bool ok = true;
 
     tmpbuf[sizeof tmpbuf - 1] = '\0';
+    push(userp, '\0');
+    return;
 
     while ((ch = *fmt++) != '\0' && ok)
     {

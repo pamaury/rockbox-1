@@ -1,12 +1,26 @@
 main.c
+#if ARM_ARCH == 7
+crt0-arm7.S
+#else
 crt0.S
+#endif
 logf.c
+#if ARM_ARCH == 7
+memcpy-arm7.S
+memmove-arm7.S
+memset-arm7.S
+#else
 memcpy.S
 memmove.S
 memset.S
+#endif
 string.c
 format.c
 #ifdef CONFIG_STMP
 usb_drv_arc.c
 stmp/target.c
+#endif
+#ifdef CONFIG_RKNANO
+usb_drv_synopsys.c
+rknano/target.c
 #endif

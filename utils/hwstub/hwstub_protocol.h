@@ -101,6 +101,7 @@ struct usb_resp_info_features_t
 
 #define HWSTUB_TARGET_UNK       ('U' | 'N' << 8 | 'K' << 16 | ' ' << 24)
 #define HWSTUB_TARGET_STMP      ('S' | 'T' << 8 | 'M' << 16 | 'P' << 24)
+#define HWSTUB_TARGET_RKNANO    ('R' | 'K' << 8 | 'N' << 16 | 'A' << 24)
 
 struct usb_resp_info_target_t
 {

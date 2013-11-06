@@ -46,7 +46,7 @@
  * normally a bit faster. Otherwise the copy is done going downwards.
  */
 
-    .section    .icode,"ax",%progbits
+    .section    .text.memmove,"ax",%progbits
 
     .align      2
     .global     memmove

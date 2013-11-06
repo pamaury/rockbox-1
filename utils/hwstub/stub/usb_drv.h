@@ -42,6 +42,7 @@ int usb_drv_recv_setup(struct usb_ctrlrequest *req);
 void usb_drv_set_address(int address);
 int usb_drv_port_speed(void);
 void usb_drv_configure_endpoint(int ep_num, int type);
+void usb_drv_irq(void);
 
 #endif /* _USB_DRV_H */
  

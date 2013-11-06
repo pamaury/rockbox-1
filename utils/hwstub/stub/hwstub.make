@@ -2,9 +2,9 @@ INCLUDES+=-I$(ROOT_DIR)
 LINKER_FILE=$(ROOT_DIR)/hwstub.lds
 TMP_LDS=$(BUILD_DIR)/link.lds
 TMP_MAP=$(BUILD_DIR)/hwstub.map
-CFLAGS=$(GCCOPTS) $(DEFINES) -W -Wall -Wundef -O -nostdlib -ffreestanding -Wstrict-prototypes -pipe -std=gnu99 -fomit-frame-pointer -Wno-pointer-sign -Wno-override-init $(INCLUDES)
+CFLAGS=$(GCCOPTS) $(DEFINES) -W -Wall -Wundef -O -nostdlib -ffreestanding -Wstrict-prototypes -pipe -std=gnu99 -fomit-frame-pointer -Wno-pointer-sign -Wno-override-init $(INCLUDES) -ffunction-sections
 ASFLAGS=$(CFLAGS) -D__ASSEMBLER__
-LDFLAGS=-lgcc -Os -nostdlib -T$(TMP_LDS) -Wl,-Map,$(TMP_MAP) $(INCLUDES) -L$(BUILD_DIR)
+LDFLAGS=-Os -nostdlib -T$(TMP_LDS) -Wl,-Map,$(TMP_MAP) $(INCLUDES) -L$(BUILD_DIR)
 
 SRC:=$(shell cat $(ROOT_DIR)/SOURCES | $(CC) $(INCLUDES) \
     $(DEFINES) -E -P -include "config.h" - 2>/dev/null \
@@ -12,7 +12,7 @@ SRC:=$(shell cat $(ROOT_DIR)/SOURCES | $(CC) $(INCLUDES) \
 SRC:=$(foreach src,$(SRC),$(BUILD_DIR)/$(src))
 OBJ=$(SRC:.c=.o)
 OBJ:=$(OBJ:.S=.o)
-OBJ_EXCEPT_CRT0=$(filter-out $(BUILD_DIR)/crt0.o,$(OBJ))
+OBJ_EXCEPT_CRT0=$(filter-out $(BUILD_DIR)/crt0%.o,$(OBJ))
 EXEC_ELF=$(BUILD_DIR)/hwstub.elf
 EXEC_BIN=$(BUILD_DIR)/hwstub.bin
 DEPS=$(foreach obj,$(OBJ),$(obj).d)

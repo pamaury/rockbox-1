@@ -174,8 +174,6 @@ uint32_t usb_buffer_size = 0;
 
 static void set_config(void)
 {
-    usb_drv_configure_endpoint(EP_BULK, USB_ENDPOINT_XFER_BULK);
-    usb_drv_configure_endpoint(EP_INT, USB_ENDPOINT_XFER_INT);
 }
 
 static void handle_std_dev_desc(struct usb_ctrlrequest *req)
@@ -252,6 +250,8 @@ static void handle_std_dev_desc(struct usb_ctrlrequest *req)
                 usb_drv_stall(EP_CONTROL, true, true);
             break;
         default:
+            ptr = 0;
+            size = 0;
             break;
     }
 
