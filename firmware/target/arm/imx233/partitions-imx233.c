@@ -137,7 +137,7 @@ static int compute_window_freescale(intptr_t user, part_read_fn_t read_fn,
         return -101; /* invalid MBR */
     if(part == IMX233_PART_DATA)
     {
-        /* sanity check that the first partition is greater than 2Gib */
+        /* sanity check that the first partition is greater than 1Gib */
         uint8_t *ent = &mbr[446];
         *start = ent[8] | ent[9] << 8 | ent[10] << 16 | ent[11] << 24;
         /* ignore two lowest bits(see comment above) */
@@ -149,7 +149,7 @@ static int compute_window_freescale(intptr_t user, part_read_fn_t read_fn,
 
         if(ent[4] == 0x53)
             return -102; /* sigmatel partition */
-        if((*end - *start) < 4 * 1024 * 1024)
+        if((*end - *start) < 2 * 1024 * 1024)
             return -103; /* partition too small */
         return 0;
     }
