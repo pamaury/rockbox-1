@@ -1443,6 +1443,19 @@ target/arm/imx233/sansa-fuzeplus/debug-fuzeplus.c
 target/arm/imx233/sansa-fuzeplus/powermgmt-fuzeplus.c
 #endif
 
+#ifdef SANSA_EXPRESS
+#ifndef BOOTLOADER
+drivers/generic_i2c.c
+target/arm/imx233/fmradio-imx233.c
+#endif
+target/arm/imx233/button-lradc-imx233.c
+target/arm/imx233/sansa-express/backlight-express.c
+target/arm/imx233/sansa-express/lcd-express.c
+target/arm/imx233/sansa-express/button-express.c
+target/arm/imx233/sansa-express/debug-express.c
+target/arm/imx233/sansa-express/powermgmt-express.c
+#endif
+
 #ifdef SAMSUNG_YPZ5
 target/arm/imx233/samsung-ypz5/backlight-ypz5.c
 target/arm/imx233/samsung-ypz5/lcd-ypz5.c

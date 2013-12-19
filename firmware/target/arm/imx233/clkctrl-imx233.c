@@ -189,6 +189,24 @@ bool imx233_clkctrl_get_bypass(enum imx233_clock_t clk)
         default: return false;
     }
 }
+#else /* MX233_SUBTARGET >= 3700 */
+void imx233_clkctrl_set_bypass(enum imx233_clock_t clk, bool bypass)
+{
+    switch(clk)
+    {
+        case CLK_PLL: BF_WR(CLKCTRL_PLLCTRL0, BYPASS, bypass); return;
+        default: return;
+    }
+}
+
+bool imx233_clkctrl_get_bypass(enum imx233_clock_t clk)
+{
+    switch(clk)
+    {
+        case CLK_PLL: return BF_RD(CLKCTRL_PLLCTRL0, BYPASS);
+        default: return false;
+    }
+}
 #endif
 
 void imx233_clkctrl_enable_usb(bool enable)
@@ -234,7 +252,12 @@ unsigned imx233_clkctrl_get_freq(enum imx233_clock_t clk)
     switch(clk)
     {
         case CLK_PLL: /* PLL: 480MHz when enable */
+#if IMX233_SUBTARGET >= 3700
             return imx233_clkctrl_is_enabled(CLK_PLL) ? 480000 : 0;
+#else
+            return !imx233_clkctrl_is_enabled(CLK_PLL) ? 0 :
+                imx233_clkctrl_get_bypass(CLK_PLL) ? 24000 : 480000;
+#endif
         case CLK_XTAL: /* crystal: 24MHz */
             return 24000;
         case CLK_CPU:
@@ -341,7 +364,7 @@ unsigned imx233_clkctrl_get_freq(enum imx233_clock_t clk)
                 return ref / imx233_clkctrl_get_div(CLK_EMI);
             }
 #else
-            return imx233_clkctrl_get_freq(CLK_PLL) / imx233_clkctrl_get_div(CLK_EMI);
+            return imx233_clkctrl_get_freq(CLK_HBUS) / imx233_clkctrl_get_div(CLK_EMI);
 #endif
         }
         case CLK_XBUS:

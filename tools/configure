@@ -1318,23 +1318,23 @@ cat <<EOF
  120) VX747               ==Tatung==             64) Sansa Fuze+
  121) VX767               150) Elio TPJ-1022     65) Sansa Clip Zip
  122) VX747+                                     66) Sansa Connect
- 123) VX777               ==Packard Bell==
-                          160) Vibe 500          ==Logik==
- ==Samsung==                                     80) DAX 1GB MP3/DAB
- 140) YH-820              ==MPIO==
- 141) YH-920              170) HD200             ==Lyre project==
- 142) YH-925              171) HD300             130) Lyre proto 1
- 143) YP-S3                                      131) Mini2440
- 144) YP-Z5
+ 123) VX777               ==Packard Bell==       67) Sansa Express
+                          160) Vibe 500
+ ==Samsung==                                     ==Logik==
+ 140) YH-820              ==MPIO==               80) DAX 1GB MP3/DAB
+ 141) YH-920              170) HD200
+ 142) YH-925              171) HD300             ==Lyre project==
+ 143) YP-S3                                      130) Lyre proto 1
+ 144) YP-Z5                                      131) Mini2440
                           ==ROCKCHIP==
- ==Application==          180) rk27xx generic    ==HiFiMAN==
- 200) SDL                                        190) HM-60x
- 201) Android             ==HiFi E.T.==          191) HM-801
- 202) Nokia N8xx          210) MA9
- 203) Nokia N900          211) MA9C              ==Sony==
- 204) Pandora             212) MA8               220) NWZ-E370/E380 series
- 205) Samsung YP-R0       213) MA8C              221) NWZ-E360 series
- 206) Android MIPS
+ ==Application==          180) rk27xx generic
+ 200) SDL                                        ==HiFiMAN==
+ 201) Android             ==HiFi E.T.==          190) HM-60x
+ 202) Nokia N8xx          210) MA9               191) HM-801
+ 203) Nokia N900          211) MA9C
+ 204) Pandora             212) MA8               ==Sony==
+ 205) Samsung YP-R0       213) MA8C              220) NWZ-E370/E380 series
+ 206) Android MIPS                               221) NWZ-E360 series
  207) Android x86
 EOF
 
@@ -2745,6 +2745,26 @@ fi
     t_cpu="arm"
     t_manufacturer="tms320dm320"
     t_model="sansa-connect"
+    arm926ejscc
+    ;;
+
+   67|sansaexpress)
+    target_id=80
+    modelname="sansaexpress"
+    target="SANSA_EXPRESS"
+    memory=2
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$bmp2rb_mono"
+    tool="$rootdir/tools/scramble -add=expr"
+    output="rockbox.sansa"
+    bootoutput="bootloader-express.sansa"
+    appextra="gui:recorder:radio"
+    plugins=""
+    swcodec="yes"
+    toolset=$scramblebitmaptools
+    t_cpu="arm"
+    t_manufacturer="imx233"
+    t_model="sansa-express"
     arm926ejscc
     ;;
 

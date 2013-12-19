@@ -151,6 +151,7 @@
 #define SONY_NWZ_PAD       57
 #define CREATIVE_ZEN_PAD   58
 #define SAMSUNG_YPZ5_PAD   59
+#define SANSA_EXPRESS_PAD  60
 
 /* CONFIG_REMOTE_KEYPAD */
 #define H100_REMOTE   1
@@ -260,6 +261,7 @@
 #define LCD_ILI9342C   57 /* another type of lcd used by HiFi E.T MA9/MA8 */
 #define LCD_CREATIVEZENV  58 /* as used by the Creativr Zen V (Plus) */
 #define LCD_SAMSUNGYPZ5   59 /* as used by Samsung YP-Z5 */
+#define LCD_EXPRESS    60 /* as used by Sansa Express (SDD1303-like) */
 
 /* LCD_PIXELFORMAT */
 #define HORIZONTAL_PACKING 1
@@ -490,6 +492,8 @@ Lyre prototype 1 */
 #include "config/sansac200v2.h"
 #elif defined(SANSA_VIEW)
 #include "config/sansaview.h"
+#elif defined(SANSA_EXPRESS)
+#include "config/sansaexpress.h"
 #elif defined(LYRE_PROTO1)
 #include "config/lyreproto1.h"
 #elif defined(MINI2440)

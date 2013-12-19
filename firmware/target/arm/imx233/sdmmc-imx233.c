@@ -160,6 +160,13 @@ struct sdmmc_config_t sdmmc_config[] =
         .ssp = 2,
         .mode = MMC_MODE
     },
+#elif defined(SANSA_EXPRESS)
+    {
+        .name = "internal/SD",
+        .flags = WINDOW,
+        .ssp = 1,
+        .mode = SD_MODE,
+    }
 #else
 #error You need to write the sd/mmc config!
 #endif
@@ -375,7 +382,7 @@ static int init_sd_card(int drive)
         if(!send_cmd(drive, SD_APP_OP_COND, (0x00FF8000 | (sd_v2 ? 1<<30 : 0)),
                 MCI_ACMD|MCI_NOCRC|MCI_RESP, &SDMMC_INFO(drive).ocr))
             return -100;
-    } while(!(SDMMC_INFO(drive).ocr & (1<<31)));
+    }while(!(SDMMC_INFO(drive).ocr & (1<<31)));
 
     /* CMD2 send CID */
     if(!send_cmd(drive, SD_ALL_SEND_CID, 0, MCI_RESP|MCI_LONG_RESP, SDMMC_INFO(drive).cid))

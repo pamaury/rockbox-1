@@ -44,6 +44,8 @@
 #include "powermgmt-imx233.h"
 #include "partitions-imx233.h"
 #include "adc.h"
+#include "pinctrl-imx233.h"
+#include "lradc-imx233.h"
 
 #include "usb.h"
 
@@ -165,11 +167,25 @@ void main(uint32_t arg, uint32_t addr)
         imx233_partitions_enable_window(false);
     }
 
+    imx233_pinctrl_acquire(1, 22, "ssp_bus");
+    imx233_pinctrl_set_function(1, 22, PINCTRL_FUNCTION_GPIO);
+    imx233_pinctrl_enable_gpio(1, 22, true);
+    imx233_pinctrl_set_gpio(1, 22, false);
+
+    BF_SET(LRADC_CTRL0, YMINUS_ENABLE);
+
     ret = storage_init();
     if(ret < 0)
         error(EATA, ret, true);
 
     disk_init_subsystem();
+
+    lcd_clear_display();
+    printf("reading sector 0...");
+    uint8_t sector[512];
+    ret = storage_read_sectors(IF_MD(0,) 0, 1, sector);
+    printf("ret = %d", ret);
+    while(1);
 
     /* NOTE: disk_mount_all to fail since we can do USB after.
      * We need this order to determine the correct logical sector size */

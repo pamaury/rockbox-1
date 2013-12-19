@@ -84,12 +84,17 @@ enum imx233_ssp_resp_t
 typedef void (*ssp_detect_cb_t)(int ssp);
 
 void imx233_ssp_init(void);
+/* start the ssp block, possibly ungating the SSPCLK */
 void imx233_ssp_start(int ssp);
+/* stop the ssp block, possibly gating the SSPCLK */
 void imx233_ssp_stop(int ssp);
 /* only softreset between start and stop or it might hang ! */
 void imx233_ssp_softreset(int ssp);
+/* set ssp block timing, relative to SSPCLK which runs at 96MHz */
 void imx233_ssp_set_timings(int ssp, int divide, int rate, int timeout);
+/* set ssp block mode: spi, sd/mmc, ... */
 void imx233_ssp_set_mode(int ssp, unsigned mode);
+/* set the ssp block bus width: 1-bit, 4-bit, 8-bit */
 void imx233_ssp_set_bus_width(int ssp, unsigned width);
 /* block_size uses the SSP format so it's actually the log_2 of the block_size */
 void imx233_ssp_set_block_size(int ssp, unsigned log_block_size);
