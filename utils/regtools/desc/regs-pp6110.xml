@@ -32,6 +32,7 @@
       <field name="CACHE" desc="Cache or ICache ?" bitrange="31:31"/>
       <field name="LCD3" desc="" bitrange="24:24"/>
       <field name="USB1" desc="" bitrange="22:22"/>
+      <field name="HSMMC" desc="" bitrange="15:15"/>
     </reg>
     <reg name="RESET2" desc="">
       <addr name="RESET2" addr="0x8"/>
@@ -41,6 +42,7 @@
       <field name="CACHE" desc="Unsure" bitrange="31:31"/>
       <field name="LCD3" desc="" bitrange="24:24"/>
       <field name="USB1" desc="" bitrange="22:22"/>
+      <field name="HSMMC" desc="" bitrange="15:15"/>
     </reg>
     <reg name="ENABLE2" desc="">
       <addr name="ENABLE2" addr="0x10"/>
@@ -376,6 +378,9 @@
       <addr name="INT_CLR19" addr="0x27c"/>
       <field name="VALUE" desc="" bitrange="7:0"/>
     </reg>
+  </dev>
+  <dev name="HSMMC" long_name="High Speed MMC" desc="" version="1.0">
+    <addr name="HSMMC" addr="0x70008500"/>
   </dev>
   <dev name="LCD3" long_name="TFT LCD controller" desc="" version="1.0">
     <addr name="LCD3" addr="0x70009200"/>
