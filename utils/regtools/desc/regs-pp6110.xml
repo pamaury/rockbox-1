@@ -20,8 +20,8 @@
       <field name="UNK2" desc="" bitrange="2:2"/>
       <field name="UNK0" desc="" bitrange="0:0"/>
     </reg>
-    <reg name="UNK24" desc="">
-      <addr name="UNK24" addr="0x24"/>
+    <reg name="REG24" desc="">
+      <addr name="REG24" addr="0x24"/>
       <field name="UNK" desc="" bitrange="0:0"/>
     </reg>
   </dev>
@@ -109,6 +109,8 @@
     </reg>
     <reg name="PLL_STATUS" desc="">
       <addr name="PLL_STATUS" addr="0x3c"/>
+      <field name="UNK31" desc="" bitrange="31:31"/>
+      <field name="UNK23_20" desc="" bitrange="23:20"/>
     </reg>
     <reg name="CACHE" desc="Unsure">
       <addr name="CACHE" addr="0x50"/>
@@ -117,6 +119,9 @@
     <reg name="LCD3" desc="">
       <addr name="LCD3" addr="0xdc"/>
       <field name="DIV" desc="Derive DOTCLK frequency from 24MHz source." bitrange="31:0"/>
+    </reg>
+    <reg name="HSMMC" desc="">
+      <addr name="HSMMC" addr="0xe4"/>
     </reg>
   </dev>
   <dev name="DEVICE" long_name="" desc="" version="1.0">
@@ -379,8 +384,48 @@
       <field name="VALUE" desc="" bitrange="7:0"/>
     </reg>
   </dev>
-  <dev name="HSMMC" long_name="High Speed MMC" desc="" version="1.0">
+  <dev name="HSMMC" long_name="High Speed MMC" desc="This block is similar to the one of the PXA27x and PX255, also similar to the one of the PP5020." version="1.0">
     <addr name="HSMMC" addr="0x70008500"/>
+    <reg name="STRPCL" desc="Clock start/stop control">
+      <addr name="STRPCL" addr="0x0"/>
+      <field name="START" desc="Start the clock even if there is no command" bitrange="1:1"/>
+      <field name="STOP" desc="Stop the clock from running when there is no command" bitrange="0:0"/>
+    </reg>
+    <reg name="STAT" desc="">
+      <addr name="STAT" addr="0x4"/>
+      <field name="UNK31" desc="" bitrange="31:31"/>
+      <field name="UNK15" desc="" bitrange="15:15"/>
+      <field name="UNK14" desc="" bitrange="14:14"/>
+      <field name="UNK13" desc="" bitrange="13:13"/>
+      <field name="UNK12" desc="" bitrange="12:12"/>
+      <field name="UNK11" desc="" bitrange="11:11"/>
+      <field name="UNK1" desc="" bitrange="1:1"/>
+      <field name="UNK0" desc="" bitrange="0:0"/>
+    </reg>
+    <reg name="CLKRT" desc="Clock rate control">
+      <addr name="CLKRT" addr="0x8"/>
+      <field name="RATE" desc="" bitrange="2:0"/>
+    </reg>
+    <reg name="CMDAT" desc="">
+      <addr name="CMDAT" addr="0x10"/>
+    </reg>
+    <reg name="REG14" desc="">
+      <addr name="REG14" addr="0x14"/>
+    </reg>
+    <reg name="REG18" desc="">
+      <addr name="REG18" addr="0x18"/>
+    </reg>
+    <reg name="CMD" desc="">
+      <addr name="CMD" addr="0x28"/>
+      <field name="CMD" desc="" bitrange="5:0"/>
+    </reg>
+    <reg name="ARG" desc="">
+      <addr name="ARG" addr="0x2c"/>
+      <field name="ARGUMENT" desc="" bitrange="31:0"/>
+    </reg>
+    <reg name="REG34" desc="">
+      <addr name="REG34" addr="0x34"/>
+    </reg>
   </dev>
   <dev name="LCD3" long_name="TFT LCD controller" desc="" version="1.0">
     <addr name="LCD3" addr="0x70009200"/>
@@ -444,11 +489,11 @@
       <field name="UNK3_2" desc="" bitrange="3:2"/>
       <field name="UNK0" desc="" bitrange="0:0"/>
     </reg>
-    <reg name="UNK28" desc="">
-      <addr name="UNK28" addr="0x28"/>
+    <reg name="REG28" desc="">
+      <addr name="REG28" addr="0x28"/>
     </reg>
-    <reg name="UNK30" desc="">
-      <addr name="UNK30" addr="0x30"/>
+    <reg name="REG30" desc="">
+      <addr name="REG30" addr="0x30"/>
     </reg>
     <reg name="WINDOW0" desc="">
       <addr name="WINDOW0" addr="0x34"/>
@@ -460,11 +505,11 @@
       <field name="RIGHT" desc="Last pixel on the row to send." bitrange="26:16"/>
       <field name="BOTTOM" desc="Last row to send." bitrange="11:0"/>
     </reg>
-    <reg name="UNK40" desc="">
-      <addr name="UNK40" addr="0x40"/>
+    <reg name="REG40" desc="">
+      <addr name="REG40" addr="0x40"/>
     </reg>
-    <reg name="UNK4C" desc="">
-      <addr name="UNK4C" addr="0x4c"/>
+    <reg name="REG4C" desc="">
+      <addr name="REG4C" addr="0x4c"/>
       <field name="UNK23" desc="" bitrange="23:23"/>
       <field name="UNK22" desc="" bitrange="22:22"/>
       <field name="UNK20" desc="" bitrange="20:20"/>
@@ -474,8 +519,8 @@
       <field name="UNK12_8" desc="" bitrange="12:8"/>
       <field name="UNK7_0" desc="" bitrange="7:0"/>
     </reg>
-    <reg name="UNK80" desc="">
-      <addr name="UNK80" addr="0x80"/>
+    <reg name="REG80" desc="">
+      <addr name="REG80" addr="0x80"/>
       <field name="MAGIC" desc="Set to 0xABCD" bitrange="31:0">
         <value name="MAGIC" value="0xabcd" desc=""/>
       </field>
@@ -527,16 +572,16 @@
   </dev>
   <dev name="UNK" long_name="" desc="" version="">
     <addr name="UNK" addr="0x60010000"/>
-    <reg name="UNK0" desc="">
-      <addr name="UNK0" addr="0x0"/>
+    <reg name="REG0" desc="">
+      <addr name="REG0" addr="0x0"/>
       <field name="UNK26_25" desc="" bitrange="26:25"/>
       <field name="UNK24_23" desc="" bitrange="24:23"/>
       <field name="UNK22" desc="" bitrange="22:22"/>
       <field name="UNK21_19" desc="" bitrange="21:19"/>
       <field name="UNK18_0" desc="" bitrange="18:0"/>
     </reg>
-    <reg name="UNK80" desc="">
-      <addr name="UNK80" addr="0x80"/>
+    <reg name="REG80" desc="">
+      <addr name="REG80" addr="0x80"/>
       <field name="WIDTH" desc="Width divided by 16" bitrange="31:16"/>
       <field name="HEIGHT" desc="Height divided by 16" bitrange="15:0"/>
     </reg>

@@ -225,18 +225,18 @@
 #define BF_LCD3_CTRL1_UNK0(v)           (((v) << 0) & 0x1)
 
 /**
- * Register: HW_LCD3_UNK28
+ * Register: HW_LCD3_REG28
  * Address: 0x28
  * SCT: no
  */
-#define HW_LCD3_UNK28   (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x28))
+#define HW_LCD3_REG28   (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x28))
 
 /**
- * Register: HW_LCD3_UNK30
+ * Register: HW_LCD3_REG30
  * Address: 0x30
  * SCT: no
  */
-#define HW_LCD3_UNK30   (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x30))
+#define HW_LCD3_REG30   (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x30))
 
 /**
  * Register: HW_LCD3_WINDOW0
@@ -273,55 +273,55 @@
 #define BF_LCD3_WINDOW1_BOTTOM(v)   (((v) << 0) & 0xfff)
 
 /**
- * Register: HW_LCD3_UNK40
+ * Register: HW_LCD3_REG40
  * Address: 0x40
  * SCT: no
  */
-#define HW_LCD3_UNK40   (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x40))
+#define HW_LCD3_REG40   (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x40))
 
 /**
- * Register: HW_LCD3_UNK4C
+ * Register: HW_LCD3_REG4C
  * Address: 0x4c
  * SCT: no
  */
-#define HW_LCD3_UNK4C               (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x4c))
-#define BP_LCD3_UNK4C_UNK23         23
-#define BM_LCD3_UNK4C_UNK23         0x800000
-#define BF_LCD3_UNK4C_UNK23(v)      (((v) << 23) & 0x800000)
-#define BP_LCD3_UNK4C_UNK22         22
-#define BM_LCD3_UNK4C_UNK22         0x400000
-#define BF_LCD3_UNK4C_UNK22(v)      (((v) << 22) & 0x400000)
-#define BP_LCD3_UNK4C_UNK20         20
-#define BM_LCD3_UNK4C_UNK20         0x100000
-#define BF_LCD3_UNK4C_UNK20(v)      (((v) << 20) & 0x100000)
-#define BP_LCD3_UNK4C_UNK19_16      16
-#define BM_LCD3_UNK4C_UNK19_16      0xf0000
-#define BF_LCD3_UNK4C_UNK19_16(v)   (((v) << 16) & 0xf0000)
-#define BP_LCD3_UNK4C_UNK15         15
-#define BM_LCD3_UNK4C_UNK15         0x8000
-#define BF_LCD3_UNK4C_UNK15(v)      (((v) << 15) & 0x8000)
-#define BP_LCD3_UNK4C_UNK14         14
-#define BM_LCD3_UNK4C_UNK14         0x4000
-#define BF_LCD3_UNK4C_UNK14(v)      (((v) << 14) & 0x4000)
-#define BP_LCD3_UNK4C_UNK12_8       8
-#define BM_LCD3_UNK4C_UNK12_8       0x1f00
-#define BF_LCD3_UNK4C_UNK12_8(v)    (((v) << 8) & 0x1f00)
-#define BP_LCD3_UNK4C_UNK7_0        0
-#define BM_LCD3_UNK4C_UNK7_0        0xff
-#define BF_LCD3_UNK4C_UNK7_0(v)     (((v) << 0) & 0xff)
+#define HW_LCD3_REG4C               (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x4c))
+#define BP_LCD3_REG4C_UNK23         23
+#define BM_LCD3_REG4C_UNK23         0x800000
+#define BF_LCD3_REG4C_UNK23(v)      (((v) << 23) & 0x800000)
+#define BP_LCD3_REG4C_UNK22         22
+#define BM_LCD3_REG4C_UNK22         0x400000
+#define BF_LCD3_REG4C_UNK22(v)      (((v) << 22) & 0x400000)
+#define BP_LCD3_REG4C_UNK20         20
+#define BM_LCD3_REG4C_UNK20         0x100000
+#define BF_LCD3_REG4C_UNK20(v)      (((v) << 20) & 0x100000)
+#define BP_LCD3_REG4C_UNK19_16      16
+#define BM_LCD3_REG4C_UNK19_16      0xf0000
+#define BF_LCD3_REG4C_UNK19_16(v)   (((v) << 16) & 0xf0000)
+#define BP_LCD3_REG4C_UNK15         15
+#define BM_LCD3_REG4C_UNK15         0x8000
+#define BF_LCD3_REG4C_UNK15(v)      (((v) << 15) & 0x8000)
+#define BP_LCD3_REG4C_UNK14         14
+#define BM_LCD3_REG4C_UNK14         0x4000
+#define BF_LCD3_REG4C_UNK14(v)      (((v) << 14) & 0x4000)
+#define BP_LCD3_REG4C_UNK12_8       8
+#define BM_LCD3_REG4C_UNK12_8       0x1f00
+#define BF_LCD3_REG4C_UNK12_8(v)    (((v) << 8) & 0x1f00)
+#define BP_LCD3_REG4C_UNK7_0        0
+#define BM_LCD3_REG4C_UNK7_0        0xff
+#define BF_LCD3_REG4C_UNK7_0(v)     (((v) << 0) & 0xff)
 
 /**
- * Register: HW_LCD3_UNK80
+ * Register: HW_LCD3_REG80
  * Address: 0x80
  * SCT: no
  */
-#define HW_LCD3_UNK80               (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x80))
+#define HW_LCD3_REG80               (*(volatile unsigned long *)(REGS_LCD3_BASE + 0x80))
 /* Field: MAGIC
  * Description: Set to 0xABCD */
-#define BP_LCD3_UNK80_MAGIC         0
-#define BM_LCD3_UNK80_MAGIC         0xffffffff
-#define BV_LCD3_UNK80_MAGIC__MAGIC  0xabcd
-#define BF_LCD3_UNK80_MAGIC(v)      (((v) << 0) & 0xffffffff)
-#define BF_LCD3_UNK80_MAGIC_V(v)    ((BV_LCD3_UNK80_MAGIC__##v << 0) & 0xffffffff)
+#define BP_LCD3_REG80_MAGIC         0
+#define BM_LCD3_REG80_MAGIC         0xffffffff
+#define BV_LCD3_REG80_MAGIC__MAGIC  0xabcd
+#define BF_LCD3_REG80_MAGIC(v)      (((v) << 0) & 0xffffffff)
+#define BF_LCD3_REG80_MAGIC_V(v)    ((BV_LCD3_REG80_MAGIC__##v << 0) & 0xffffffff)
 
 #endif /* __HEADERGEN__PP6110__LCD3__H__ */

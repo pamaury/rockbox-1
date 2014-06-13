@@ -29,42 +29,42 @@
 #define REGS_UNK_VERSION ""
 
 /**
- * Register: HW_UNK_UNK0
+ * Register: HW_UNK_REG0
  * Address: 0
  * SCT: no
  */
-#define HW_UNK_UNK0             (*(volatile unsigned long *)(REGS_UNK_BASE + 0x0))
-#define BP_UNK_UNK0_UNK26_25    25
-#define BM_UNK_UNK0_UNK26_25    0x6000000
-#define BF_UNK_UNK0_UNK26_25(v) (((v) << 25) & 0x6000000)
-#define BP_UNK_UNK0_UNK24_23    23
-#define BM_UNK_UNK0_UNK24_23    0x1800000
-#define BF_UNK_UNK0_UNK24_23(v) (((v) << 23) & 0x1800000)
-#define BP_UNK_UNK0_UNK22       22
-#define BM_UNK_UNK0_UNK22       0x400000
-#define BF_UNK_UNK0_UNK22(v)    (((v) << 22) & 0x400000)
-#define BP_UNK_UNK0_UNK21_19    19
-#define BM_UNK_UNK0_UNK21_19    0x380000
-#define BF_UNK_UNK0_UNK21_19(v) (((v) << 19) & 0x380000)
-#define BP_UNK_UNK0_UNK18_0     0
-#define BM_UNK_UNK0_UNK18_0     0x7ffff
-#define BF_UNK_UNK0_UNK18_0(v)  (((v) << 0) & 0x7ffff)
+#define HW_UNK_REG0             (*(volatile unsigned long *)(REGS_UNK_BASE + 0x0))
+#define BP_UNK_REG0_UNK26_25    25
+#define BM_UNK_REG0_UNK26_25    0x6000000
+#define BF_UNK_REG0_UNK26_25(v) (((v) << 25) & 0x6000000)
+#define BP_UNK_REG0_UNK24_23    23
+#define BM_UNK_REG0_UNK24_23    0x1800000
+#define BF_UNK_REG0_UNK24_23(v) (((v) << 23) & 0x1800000)
+#define BP_UNK_REG0_UNK22       22
+#define BM_UNK_REG0_UNK22       0x400000
+#define BF_UNK_REG0_UNK22(v)    (((v) << 22) & 0x400000)
+#define BP_UNK_REG0_UNK21_19    19
+#define BM_UNK_REG0_UNK21_19    0x380000
+#define BF_UNK_REG0_UNK21_19(v) (((v) << 19) & 0x380000)
+#define BP_UNK_REG0_UNK18_0     0
+#define BM_UNK_REG0_UNK18_0     0x7ffff
+#define BF_UNK_REG0_UNK18_0(v)  (((v) << 0) & 0x7ffff)
 
 /**
- * Register: HW_UNK_UNK80
+ * Register: HW_UNK_REG80
  * Address: 0x80
  * SCT: no
  */
-#define HW_UNK_UNK80            (*(volatile unsigned long *)(REGS_UNK_BASE + 0x80))
+#define HW_UNK_REG80            (*(volatile unsigned long *)(REGS_UNK_BASE + 0x80))
 /* Field: WIDTH
  * Description: Width divided by 16 */
-#define BP_UNK_UNK80_WIDTH      16
-#define BM_UNK_UNK80_WIDTH      0xffff0000
-#define BF_UNK_UNK80_WIDTH(v)   (((v) << 16) & 0xffff0000)
+#define BP_UNK_REG80_WIDTH      16
+#define BM_UNK_REG80_WIDTH      0xffff0000
+#define BF_UNK_REG80_WIDTH(v)   (((v) << 16) & 0xffff0000)
 /* Field: HEIGHT
  * Description: Height divided by 16 */
-#define BP_UNK_UNK80_HEIGHT     0
-#define BM_UNK_UNK80_HEIGHT     0xffff
-#define BF_UNK_UNK80_HEIGHT(v)  (((v) << 0) & 0xffff)
+#define BP_UNK_REG80_HEIGHT     0
+#define BM_UNK_REG80_HEIGHT     0xffff
+#define BF_UNK_REG80_HEIGHT(v)  (((v) << 0) & 0xffff)
 
 #endif /* __HEADERGEN__PP6110__UNK__H__ */

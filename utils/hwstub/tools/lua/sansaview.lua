@@ -155,7 +155,22 @@ function SANSAVIEW.lcd_init()
     SANSAVIEW.lcd_write_reg(0x7, 0x173)
 end
 
+function SANSAVIEW.sd_init()
+    HW.GPIO.OUTPUT_VALn[7].write(0) -- GPIOH_OUTPUT_VAL = 0
+    HW.GPIO.ENABLEn[8].write(0) -- GPIOI_ENABLE = 0
+    HW.GPIO.OUTPUT_ENn[8].write(0) -- GPIOI_OUTPUT_EN = 0
+    HW.GPIO.OUTPUT_VALn[8].write(0) -- GPIOI_OUTPUT_VAL = 0
+    HW.DEVICE.INIT1.write(bit32.band(HW.DEVICE.INIT1.read(),0xffcccfff)) -- DEV_INIT1 &= 0xffcccfff
+    HW.DEVICE.INIT1.write(bit32.bor(HW.DEVICE.INIT1.read(),0x333000)) -- DEV_INIT1 |= ~0xffcccfff
+    HW.DEVICE.INIT1.write(bit32.band(HW.DEVICE.INIT1.read(),0xffcccfff)) -- DEV_INIT1 &= 0xffcccfff
+    HW.DEVICE.INIT2.write(bit32.band(HW.DEVICE.INIT2.read(),0xfffffeff)) -- DEV_INIT2 &= ~0x100
+    PP.gpio.pin("O", 5).enable(true) -- GPIOO_ENABLE |= 0x20
+    PP.gpio.pin("O", 5).output_enable(true) -- GPIOO_OUTPUT_EN |= 0x20
+    PP.gpio.pin("O", 5).write(true) -- GPIOO_OUTPUT_VAL |= 0x20
+end
+
 function SANSAVIEW.init()
-    SANSAVIEW.set_backlight(true)
-    SANSAVIEW.lcd_init()
+    --SANSAVIEW.set_backlight(true)
+    --SANSAVIEW.lcd_init()
+    SANSAVIEW.sd_init()
 end

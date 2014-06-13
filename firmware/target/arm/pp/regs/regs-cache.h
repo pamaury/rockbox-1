@@ -81,13 +81,13 @@
 #define BF_CACHE_DRAM_UNK0(v)   (((v) << 0) & 0x1)
 
 /**
- * Register: HW_CACHE_UNK24
+ * Register: HW_CACHE_REG24
  * Address: 0x24
  * SCT: no
  */
-#define HW_CACHE_UNK24          (*(volatile unsigned long *)(REGS_CACHE_BASE + 0x24))
-#define BP_CACHE_UNK24_UNK      0
-#define BM_CACHE_UNK24_UNK      0x1
-#define BF_CACHE_UNK24_UNK(v)   (((v) << 0) & 0x1)
+#define HW_CACHE_REG24          (*(volatile unsigned long *)(REGS_CACHE_BASE + 0x24))
+#define BP_CACHE_REG24_UNK      0
+#define BM_CACHE_REG24_UNK      0x1
+#define BF_CACHE_REG24_UNK(v)   (((v) << 0) & 0x1)
 
 #endif /* __HEADERGEN__PP6110__CACHE__H__ */

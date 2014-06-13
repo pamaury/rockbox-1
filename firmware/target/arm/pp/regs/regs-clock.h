@@ -45,6 +45,9 @@
 #define BP_CLOCK_RESET_USB1     22
 #define BM_CLOCK_RESET_USB1     0x400000
 #define BF_CLOCK_RESET_USB1(v)  (((v) << 22) & 0x400000)
+#define BP_CLOCK_RESET_HSMMC    15
+#define BM_CLOCK_RESET_HSMMC    0x8000
+#define BF_CLOCK_RESET_HSMMC(v) (((v) << 15) & 0x8000)
 
 /**
  * Register: HW_CLOCK_RESET2
@@ -70,6 +73,9 @@
 #define BP_CLOCK_ENABLE_USB1        22
 #define BM_CLOCK_ENABLE_USB1        0x400000
 #define BF_CLOCK_ENABLE_USB1(v)     (((v) << 22) & 0x400000)
+#define BP_CLOCK_ENABLE_HSMMC       15
+#define BM_CLOCK_ENABLE_HSMMC       0x8000
+#define BF_CLOCK_ENABLE_HSMMC(v)    (((v) << 15) & 0x8000)
 
 /**
  * Register: HW_CLOCK_ENABLE2
