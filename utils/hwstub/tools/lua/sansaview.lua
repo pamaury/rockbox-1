@@ -169,8 +169,62 @@ function SANSAVIEW.sd_init()
     PP.gpio.pin("O", 5).write(true) -- GPIOO_OUTPUT_VAL |= 0x20
 end
 
+function SANSAVIEW.sd_init2()
+    HW.DEVICE.INIT2.clr(0x100)
+    HW.DEVICE.INIT2.clr(0x800)
+    HW.DEVICE.INIT2.clr(0x4000)
+    HW.DEVICE.INIT1.clr(0x333000)
+    HW.DEVICE.INIT1.set(0x333000)
+    HW.DEVICE.INIT3.clr(0xf0000000)
+    PP.gpio.pin("O", 5).enable(true)
+    PP.gpio.pin("O", 5).write(true)
+    PP.gpio.pin("O", 5).output_enable(true)
+    PP.gpio.pin("O", 6).enable(true)
+    PP.gpio.pin("O", 6).write(false)
+    PP.gpio.pin("O", 6).output_enable(true)
+end
+
+function SANSAVIEW.sd_select(which)
+    if which ~= 0 then
+        HW.DEVICE.INIT1.clr(0x333000)
+        PP.gpio.pin("I", 6).write(true)
+        PP.gpio.pin("I", 6).output_enable(true)
+        PP.gpio.pin("I", 6).enable(true)
+        for i = 0, 3 do
+            PP.gpio.pin("H", i).write(true)
+            PP.gpio.pin("H", i).output_enable(true)
+            PP.gpio.pin("H", i).enable(true)
+        end
+        HW.DEVICE.INIT3.clr(0xf0000000)
+        HW.DEVICE.INIT3.set(0xf0000000)
+        PP.gpio.pin("D", 5).enable(false)
+        PP.gpio.pin("C", 6).enable(false)
+        for i = 0, 3 do
+            PP.gpio.pin("L", i).enable(false)
+        end
+        PP.gpio.pin("O", 6).write(true)
+    else
+        PP.gpio.pin("D", 5).write(true)
+        PP.gpio.pin("D", 5).output_enable(true)
+        PP.gpio.pin("D", 5).enable(true)
+        for i = 0, 3 do
+            PP.gpio.pin("L", i).write(true)
+            PP.gpio.pin("L", i).output_enable(true)
+            PP.gpio.pin("L", i).enable(true)
+        end
+        HW.DEVICE.INIT1.clr(0x333000)
+        HW.DEVICE.INIT1.set(0x333000)
+        PP.gpio.pin("I", 6).enable(false)
+        PP.gpio.pin("I", 5).enable(false)
+        for i = 0, 3 do
+            PP.gpio.pin("H", i).enable(false)
+        end
+        PP.gpio.pin("O", 5).write(true)
+    end
+end
+
 function SANSAVIEW.init()
     --SANSAVIEW.set_backlight(true)
     --SANSAVIEW.lcd_init()
-    SANSAVIEW.sd_init()
+    --SANSAVIEW.sd_init()
 end
