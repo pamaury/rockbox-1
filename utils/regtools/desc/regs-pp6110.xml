@@ -124,264 +124,137 @@
       <addr name="HSMMC" addr="0xe4"/>
     </reg>
   </dev>
-  <dev name="DEVICE" long_name="" desc="" version="1.0">
-    <addr name="DEVICE" addr="0x70000000"/>
-    <reg name="VER1" desc="">
-      <addr name="VER1" addr="0x0"/>
-      <field name="LOW_ID" desc="Low part of the chip ID" bitrange="31:16">
-        <value name="10" value="0x3130" desc="The string &quot;10&quot;"/>
+  <dev name="CPU" long_name="CPU identification" desc="" version="1.0">
+    <addr name="PROC" addr="0x60000000"/>
+    <reg name="ID" desc="This registers gives the ID of the processor, which can either be the main CPU or the COP.">
+      <addr name="ID" addr="0x0"/>
+      <field name="ID" desc="Processor ID" bitrange="7:0">
+        <value name="CPU" value="0x55" desc=""/>
+        <value name="COP" value="0xaa" desc=""/>
       </field>
-      <field name="REV" desc="Chip revision" bitrange="15:0">
-        <value name="B1" value="0x4231" desc="The string &quot;B1&quot;"/>
-      </field>
-    </reg>
-    <reg name="VER2" desc="">
-      <addr name="VER2" addr="0x4"/>
-      <field name="PP" desc="" bitrange="31:16">
-        <value name="PP" value="0x5050" desc="The string &quot;PP&quot;"/>
-      </field>
-      <field name="HIGH_ID" desc="High part of the chip ID" bitrange="15:0">
-        <value name="61" value="0x3631" desc="The string &quot;61&quot;"/>
-      </field>
-    </reg>
-    <reg name="STRAP_OPT_A" desc="">
-      <addr name="STRAP_OPT_A" addr="0x8"/>
-    </reg>
-    <reg name="STRAP_OPT_B" desc="">
-      <addr name="STRAP_OPT_B" addr="0xc"/>
-    </reg>
-    <reg name="INIT1" desc="">
-      <addr name="INIT1" addr="0x10"/>
-    </reg>
-    <reg name="INIT3" desc="">
-      <addr name="INIT3" addr="0x14"/>
-    </reg>
-    <reg name="INIT4" desc="">
-      <addr name="INIT4" addr="0x18"/>
-      <field name="PLL2" desc="unsure" bitrange="4:4"/>
-    </reg>
-    <reg name="INIT2" desc="">
-      <addr name="INIT2" addr="0x20"/>
-      <field name="USB" desc="" bitrange="31:31"/>
-      <field name="PLL" desc="" bitrange="30:30"/>
-    </reg>
-    <reg name="USB" desc="">
-      <addr name="USB" addr="0x28"/>
-      <field name="RESET" desc="" bitrange="11:11"/>
-      <field name="READY" desc="" bitrange="7:7"/>
-      <field name="UNK1" desc="" bitrange="1:1"/>
-      <field name="UNK0" desc="" bitrange="0:0"/>
-    </reg>
-    <reg name="INIT6" desc="">
-      <addr name="INIT6" addr="0x30"/>
-    </reg>
-    <reg name="TIMING" desc="">
-      <addr name="TIMING" addr="0x34"/>
-    </reg>
-    <reg name="NOR_CFG" desc="">
-      <addr name="NOR_CFG" addr="0x38"/>
-    </reg>
-    <reg name="RAM_CFG" desc="">
-      <addr name="RAM_CFG" addr="0x3c"/>
-    </reg>
-    <reg name="INIT7" desc="">
-      <addr name="INIT7" addr="0x48"/>
-      <field name="UNK7_0" desc="" bitrange="7:0"/>
     </reg>
   </dev>
-  <dev name="GPIO" long_name="General Purpose I/O" desc="" version="1.0">
+  <dev name="GPIO" long_name="General Purpose I/O" desc="Each GPIO controller controls 4 ports of 8 pins each." version="1.0">
     <addr name="GPIO" addr="0x6000d000"/>
-    <reg name="ENABLEn" desc="">
-      <formula string="((n)/4)*0x80+((n)%4)*4"/>
-      <addr name="ENABLE0" addr="0x0"/>
-      <addr name="ENABLE1" addr="0x4"/>
-      <addr name="ENABLE2" addr="0x8"/>
-      <addr name="ENABLE3" addr="0xc"/>
-      <addr name="ENABLE4" addr="0x80"/>
-      <addr name="ENABLE5" addr="0x84"/>
-      <addr name="ENABLE6" addr="0x88"/>
-      <addr name="ENABLE7" addr="0x8c"/>
-      <addr name="ENABLE8" addr="0x100"/>
-      <addr name="ENABLE9" addr="0x104"/>
-      <addr name="ENABLE10" addr="0x108"/>
-      <addr name="ENABLE11" addr="0x10c"/>
-      <addr name="ENABLE12" addr="0x180"/>
-      <addr name="ENABLE13" addr="0x184"/>
-      <addr name="ENABLE14" addr="0x188"/>
-      <addr name="ENABLE15" addr="0x18c"/>
-      <addr name="ENABLE16" addr="0x200"/>
-      <addr name="ENABLE17" addr="0x204"/>
-      <addr name="ENABLE18" addr="0x208"/>
-      <addr name="ENABLE19" addr="0x20c"/>
+    <reg name="CNFn" desc="Configuration register: designate whether each pin operates as a GPIO or as a SFIO (Special Function I/O). In Special function mode, pins are multiplexed and pin muxing is controlled by the Miscellaneous block.">
+      <formula string="0x0+(n)*4"/>
+      <addr name="CNF0" addr="0x0"/>
+      <addr name="CNF1" addr="0x4"/>
+      <addr name="CNF2" addr="0x8"/>
+      <addr name="CNF3" addr="0xc"/>
+      <field name="VALUE" desc="Each bit control whether the is in either GPIO mode (1) or SFIO mode (0)." bitrange="7:0"/>
+    </reg>
+    <reg name="OEn" desc="Enable the output drivers for pins operated as GPIO.">
+      <formula string="0x10+(n)*4"/>
+      <addr name="OE0" addr="0x10"/>
+      <addr name="OE1" addr="0x14"/>
+      <addr name="OE2" addr="0x18"/>
+      <addr name="OE3" addr="0x1c"/>
       <field name="VALUE" desc="" bitrange="7:0"/>
     </reg>
-    <reg name="OUTPUT_ENn" desc="">
-      <formula string="0x10+((n)/4)*0x80+((n)%4)*4"/>
-      <addr name="OUTPUT_EN0" addr="0x10"/>
-      <addr name="OUTPUT_EN1" addr="0x14"/>
-      <addr name="OUTPUT_EN2" addr="0x18"/>
-      <addr name="OUTPUT_EN3" addr="0x1c"/>
-      <addr name="OUTPUT_EN4" addr="0x90"/>
-      <addr name="OUTPUT_EN5" addr="0x94"/>
-      <addr name="OUTPUT_EN6" addr="0x98"/>
-      <addr name="OUTPUT_EN7" addr="0x9c"/>
-      <addr name="OUTPUT_EN8" addr="0x110"/>
-      <addr name="OUTPUT_EN9" addr="0x114"/>
-      <addr name="OUTPUT_EN10" addr="0x118"/>
-      <addr name="OUTPUT_EN11" addr="0x11c"/>
-      <addr name="OUTPUT_EN12" addr="0x190"/>
-      <addr name="OUTPUT_EN13" addr="0x194"/>
-      <addr name="OUTPUT_EN14" addr="0x198"/>
-      <addr name="OUTPUT_EN15" addr="0x19c"/>
-      <addr name="OUTPUT_EN16" addr="0x210"/>
-      <addr name="OUTPUT_EN17" addr="0x214"/>
-      <addr name="OUTPUT_EN18" addr="0x218"/>
-      <addr name="OUTPUT_EN19" addr="0x21c"/>
+    <reg name="OUTn" desc="Specify the value driven on a pin operated as GPIO.">
+      <formula string="0x20+(n)*0x4"/>
+      <addr name="OUT0" addr="0x20"/>
+      <addr name="OUT1" addr="0x24"/>
+      <addr name="OUT2" addr="0x28"/>
+      <addr name="OUT3" addr="0x2c"/>
       <field name="VALUE" desc="" bitrange="7:0"/>
     </reg>
-    <reg name="OUTPUT_VALn" desc="">
-      <formula string="0x20+((n)/4)*0x80+((n)%4)*4"/>
-      <addr name="OUTPUT_VAL0" addr="0x20"/>
-      <addr name="OUTPUT_VAL1" addr="0x24"/>
-      <addr name="OUTPUT_VAL2" addr="0x28"/>
-      <addr name="OUTPUT_VAL3" addr="0x2c"/>
-      <addr name="OUTPUT_VAL4" addr="0xa0"/>
-      <addr name="OUTPUT_VAL5" addr="0xa4"/>
-      <addr name="OUTPUT_VAL6" addr="0xa8"/>
-      <addr name="OUTPUT_VAL7" addr="0xac"/>
-      <addr name="OUTPUT_VAL8" addr="0x120"/>
-      <addr name="OUTPUT_VAL9" addr="0x124"/>
-      <addr name="OUTPUT_VAL10" addr="0x128"/>
-      <addr name="OUTPUT_VAL11" addr="0x12c"/>
-      <addr name="OUTPUT_VAL12" addr="0x1a0"/>
-      <addr name="OUTPUT_VAL13" addr="0x1a4"/>
-      <addr name="OUTPUT_VAL14" addr="0x1a8"/>
-      <addr name="OUTPUT_VAL15" addr="0x1ac"/>
-      <addr name="OUTPUT_VAL16" addr="0x220"/>
-      <addr name="OUTPUT_VAL17" addr="0x224"/>
-      <addr name="OUTPUT_VAL18" addr="0x228"/>
-      <addr name="OUTPUT_VAL19" addr="0x22c"/>
+    <reg name="INn" desc="Read-only view of the pins operated as GPIO.">
+      <formula string="0x30+(n)*0x4"/>
+      <addr name="IN0" addr="0x30"/>
+      <addr name="IN1" addr="0x34"/>
+      <addr name="IN2" addr="0x38"/>
+      <addr name="IN3" addr="0x3c"/>
       <field name="VALUE" desc="" bitrange="7:0"/>
     </reg>
-    <reg name="INPUT_VALn" desc="">
-      <formula string="0x30+((n)/4)*0x80+((n)%4)*4"/>
-      <addr name="INPUT_VAL0" addr="0x30"/>
-      <addr name="INPUT_VAL1" addr="0x34"/>
-      <addr name="INPUT_VAL2" addr="0x38"/>
-      <addr name="INPUT_VAL3" addr="0x3c"/>
-      <addr name="INPUT_VAL4" addr="0xb0"/>
-      <addr name="INPUT_VAL5" addr="0xb4"/>
-      <addr name="INPUT_VAL6" addr="0xb8"/>
-      <addr name="INPUT_VAL7" addr="0xbc"/>
-      <addr name="INPUT_VAL8" addr="0x130"/>
-      <addr name="INPUT_VAL9" addr="0x134"/>
-      <addr name="INPUT_VAL10" addr="0x138"/>
-      <addr name="INPUT_VAL11" addr="0x13c"/>
-      <addr name="INPUT_VAL12" addr="0x1b0"/>
-      <addr name="INPUT_VAL13" addr="0x1b4"/>
-      <addr name="INPUT_VAL14" addr="0x1b8"/>
-      <addr name="INPUT_VAL15" addr="0x1bc"/>
-      <addr name="INPUT_VAL16" addr="0x230"/>
-      <addr name="INPUT_VAL17" addr="0x234"/>
-      <addr name="INPUT_VAL18" addr="0x238"/>
-      <addr name="INPUT_VAL19" addr="0x23c"/>
+    <reg name="INT_STAn" desc="Interrupt status of pins operated as GPIO.">
+      <formula string="0x40+(n)*0x4"/>
+      <addr name="INT_STA0" addr="0x40"/>
+      <addr name="INT_STA1" addr="0x44"/>
+      <addr name="INT_STA2" addr="0x48"/>
+      <addr name="INT_STA3" addr="0x4c"/>
       <field name="VALUE" desc="" bitrange="7:0"/>
     </reg>
-    <reg name="INT_STATn" desc="">
-      <formula string="0x40+((n)/4)*0x80+((n)%4)*4"/>
-      <addr name="INT_STAT0" addr="0x40"/>
-      <addr name="INT_STAT1" addr="0x44"/>
-      <addr name="INT_STAT2" addr="0x48"/>
-      <addr name="INT_STAT3" addr="0x4c"/>
-      <addr name="INT_STAT4" addr="0xc0"/>
-      <addr name="INT_STAT5" addr="0xc4"/>
-      <addr name="INT_STAT6" addr="0xc8"/>
-      <addr name="INT_STAT7" addr="0xcc"/>
-      <addr name="INT_STAT8" addr="0x140"/>
-      <addr name="INT_STAT9" addr="0x144"/>
-      <addr name="INT_STAT10" addr="0x148"/>
-      <addr name="INT_STAT11" addr="0x14c"/>
-      <addr name="INT_STAT12" addr="0x1c0"/>
-      <addr name="INT_STAT13" addr="0x1c4"/>
-      <addr name="INT_STAT14" addr="0x1c8"/>
-      <addr name="INT_STAT15" addr="0x1cc"/>
-      <addr name="INT_STAT16" addr="0x240"/>
-      <addr name="INT_STAT17" addr="0x244"/>
-      <addr name="INT_STAT18" addr="0x248"/>
-      <addr name="INT_STAT19" addr="0x24c"/>
+    <reg name="INT_ENBn" desc="Enable interrupt functionality of pins operated as GPIO.">
+      <formula string="0x50+(n)*0x4"/>
+      <addr name="INT_ENB0" addr="0x50"/>
+      <addr name="INT_ENB1" addr="0x54"/>
+      <addr name="INT_ENB2" addr="0x58"/>
+      <addr name="INT_ENB3" addr="0x5c"/>
       <field name="VALUE" desc="" bitrange="7:0"/>
     </reg>
-    <reg name="INT_ENABLEn" desc="">
-      <formula string="0x50+((n)/4)*0x80+((n)%4)*4"/>
-      <addr name="INT_ENABLE0" addr="0x50"/>
-      <addr name="INT_ENABLE1" addr="0x54"/>
-      <addr name="INT_ENABLE2" addr="0x58"/>
-      <addr name="INT_ENABLE3" addr="0x5c"/>
-      <addr name="INT_ENABLE4" addr="0xd0"/>
-      <addr name="INT_ENABLE5" addr="0xd4"/>
-      <addr name="INT_ENABLE6" addr="0xd8"/>
-      <addr name="INT_ENABLE7" addr="0xdc"/>
-      <addr name="INT_ENABLE8" addr="0x150"/>
-      <addr name="INT_ENABLE9" addr="0x154"/>
-      <addr name="INT_ENABLE10" addr="0x158"/>
-      <addr name="INT_ENABLE11" addr="0x15c"/>
-      <addr name="INT_ENABLE12" addr="0x1d0"/>
-      <addr name="INT_ENABLE13" addr="0x1d4"/>
-      <addr name="INT_ENABLE14" addr="0x1d8"/>
-      <addr name="INT_ENABLE15" addr="0x1dc"/>
-      <addr name="INT_ENABLE16" addr="0x250"/>
-      <addr name="INT_ENABLE17" addr="0x254"/>
-      <addr name="INT_ENABLE18" addr="0x258"/>
-      <addr name="INT_ENABLE19" addr="0x25c"/>
-      <field name="VALUE" desc="" bitrange="7:0"/>
+    <reg name="INT_LVLn" desc="Specify the pin state of pin change which triggers the interrupt.">
+      <formula string="0x60+(n)*0x4"/>
+      <addr name="INT_LVL0" addr="0x60"/>
+      <addr name="INT_LVL1" addr="0x64"/>
+      <addr name="INT_LVL2" addr="0x68"/>
+      <addr name="INT_LVL3" addr="0x6c"/>
+      <field name="DELTA" desc="If the interrupt the edge-triggered, select whether all edges trigger the interrupt, or only edges specified by VALUE." bitrange="21:16"/>
+      <field name="EDGE" desc="Select whether the interrupt is edge-triggered or level-triggered." bitrange="15:8"/>
+      <field name="VALUE" desc="For level-triggered interrupt, select whether a logic high or logic low triggers the interrupt.&#10;For edge-triggered interrypt, select whether a raising edge or falling edge triggers the interrupt." bitrange="7:0"/>
     </reg>
-    <reg name="INT_LEVn" desc="">
-      <formula string="0x60+((n)/4)*0x80+((n)%4)*4"/>
-      <addr name="INT_LEV0" addr="0x60"/>
-      <addr name="INT_LEV1" addr="0x64"/>
-      <addr name="INT_LEV2" addr="0x68"/>
-      <addr name="INT_LEV3" addr="0x6c"/>
-      <addr name="INT_LEV4" addr="0xe0"/>
-      <addr name="INT_LEV5" addr="0xe4"/>
-      <addr name="INT_LEV6" addr="0xe8"/>
-      <addr name="INT_LEV7" addr="0xec"/>
-      <addr name="INT_LEV8" addr="0x160"/>
-      <addr name="INT_LEV9" addr="0x164"/>
-      <addr name="INT_LEV10" addr="0x168"/>
-      <addr name="INT_LEV11" addr="0x16c"/>
-      <addr name="INT_LEV12" addr="0x1e0"/>
-      <addr name="INT_LEV13" addr="0x1e4"/>
-      <addr name="INT_LEV14" addr="0x1e8"/>
-      <addr name="INT_LEV15" addr="0x1ec"/>
-      <addr name="INT_LEV16" addr="0x260"/>
-      <addr name="INT_LEV17" addr="0x264"/>
-      <addr name="INT_LEV18" addr="0x268"/>
-      <addr name="INT_LEV19" addr="0x26c"/>
-      <field name="VALUE" desc="" bitrange="7:0"/>
-    </reg>
-    <reg name="INT_CLRn" desc="">
-      <formula string="0x70+((n)/4)*0x80+((n)%4)*4"/>
+    <reg name="INT_CLRn" desc="Clear pending interrupts.">
+      <formula string="0x70+(n)*0x4"/>
       <addr name="INT_CLR0" addr="0x70"/>
       <addr name="INT_CLR1" addr="0x74"/>
       <addr name="INT_CLR2" addr="0x78"/>
       <addr name="INT_CLR3" addr="0x7c"/>
-      <addr name="INT_CLR4" addr="0xf0"/>
-      <addr name="INT_CLR5" addr="0xf4"/>
-      <addr name="INT_CLR6" addr="0xf8"/>
-      <addr name="INT_CLR7" addr="0xfc"/>
-      <addr name="INT_CLR8" addr="0x170"/>
-      <addr name="INT_CLR9" addr="0x174"/>
-      <addr name="INT_CLR10" addr="0x178"/>
-      <addr name="INT_CLR11" addr="0x17c"/>
-      <addr name="INT_CLR12" addr="0x1f0"/>
-      <addr name="INT_CLR13" addr="0x1f4"/>
-      <addr name="INT_CLR14" addr="0x1f8"/>
-      <addr name="INT_CLR15" addr="0x1fc"/>
-      <addr name="INT_CLR16" addr="0x270"/>
-      <addr name="INT_CLR17" addr="0x274"/>
-      <addr name="INT_CLR18" addr="0x278"/>
-      <addr name="INT_CLR19" addr="0x27c"/>
       <field name="VALUE" desc="" bitrange="7:0"/>
+    </reg>
+    <reg name="MSK_CNFn" desc="Masked configuration registers to allow individual updates in CNF.">
+      <formula string="0x800+(n)*0x4"/>
+      <addr name="MSK_CNF0" addr="0x800"/>
+      <addr name="MSK_CNF1" addr="0x804"/>
+      <addr name="MSK_CNF2" addr="0x808"/>
+      <addr name="MSK_CNF3" addr="0x80c"/>
+      <field name="MASK" desc="Mask of updated pins." bitrange="15:8"/>
+      <field name="VALUE" desc="New value for the bits" bitrange="7:0"/>
+    </reg>
+    <reg name="MSK_OEn" desc="Masked output enable registers to allow individual updates in OE.">
+      <formula string="0x810+(n)*0x4"/>
+      <addr name="MSK_OE0" addr="0x810"/>
+      <addr name="MSK_OE1" addr="0x814"/>
+      <addr name="MSK_OE2" addr="0x818"/>
+      <addr name="MSK_OE3" addr="0x81c"/>
+      <field name="MASK" desc="Mask of updated pins." bitrange="15:8"/>
+      <field name="VALUE" desc="New value for the bits" bitrange="7:0"/>
+    </reg>
+    <reg name="MSK_OUTn" desc="Masked output registers to allow individual updates in OUT.">
+      <formula string="0x820+(n)*0x4"/>
+      <addr name="MSK_OUT0" addr="0x820"/>
+      <addr name="MSK_OUT1" addr="0x824"/>
+      <addr name="MSK_OUT2" addr="0x828"/>
+      <addr name="MSK_OUT3" addr="0x82c"/>
+      <field name="MASK" desc="Mask of updated pins." bitrange="15:8"/>
+      <field name="VALUE" desc="New value for the bits" bitrange="7:0"/>
+    </reg>
+    <reg name="MSK_INT_STAn" desc="Masked interrupt status registers to allow individual updates in INT_STA.">
+      <formula string="0x840+(n)*0x4"/>
+      <addr name="MSK_INT_STA0" addr="0x840"/>
+      <addr name="MSK_INT_STA1" addr="0x844"/>
+      <addr name="MSK_INT_STA2" addr="0x848"/>
+      <addr name="MSK_INT_STA3" addr="0x84c"/>
+      <field name="MASK" desc="Mask of updated pins." bitrange="15:8"/>
+      <field name="VALUE" desc="New value for the bits" bitrange="7:0"/>
+    </reg>
+    <reg name="MSK_INT_ENBn" desc="Masked interrupt enable registers to allow individual updates in INT_ENB.">
+      <formula string="0x850+(n)*0x4"/>
+      <addr name="MSK_INT_ENB0" addr="0x850"/>
+      <addr name="MSK_INT_ENB1" addr="0x854"/>
+      <addr name="MSK_INT_ENB2" addr="0x858"/>
+      <addr name="MSK_INT_ENB3" addr="0x85c"/>
+      <field name="MASK" desc="Mask of updated pins." bitrange="15:8"/>
+      <field name="VALUE" desc="New value for the bits" bitrange="7:0"/>
+    </reg>
+    <reg name="MSK_INT_LVLn" desc="Masked interrupt enable registers to allow individual updates in INT_LVL. It only allows updates to the VALUE field.">
+      <formula string="0x860+(n)*0x4"/>
+      <addr name="MSK_INT_LVL0" addr="0x860"/>
+      <addr name="MSK_INT_LVL1" addr="0x864"/>
+      <addr name="MSK_INT_LVL2" addr="0x868"/>
+      <addr name="MSK_INT_LVL3" addr="0x86c"/>
+      <field name="MASK" desc="Mask of updated pins." bitrange="15:8"/>
+      <field name="VALUE" desc="New value of the pins." bitrange="7:0"/>
     </reg>
   </dev>
   <dev name="HSMMC" long_name="High Speed MMC" desc="This block is similar to the one of the PXA27x and PX255, also similar to the one of the PP5020." version="1.0">
@@ -425,6 +298,70 @@
     </reg>
     <reg name="REG34" desc="">
       <addr name="REG34" addr="0x34"/>
+    </reg>
+  </dev>
+  <dev name="ICTLR" long_name="Interrupt Controller" desc="Each interrupt controller can drive 32 interrupt sources, to the CPU or the COP." version="1.0">
+    <addr name="PRI_ICTLR" addr="0x60004000"/>
+    <addr name="SEC_ICTLR" addr="0x60004100"/>
+    <reg name="VIRQ_CPU" desc="Valid interrupt request status for the CPU. This is the logical OR of ISR (latched status) and FIR (force status), AND'd with IER (interrupt enable) and NOT IEP_CLASS (interrupt class).">
+      <addr name="VIRQ_CPU" addr="0x0"/>
+    </reg>
+    <reg name="VIRQ_COP" desc="Valid interrupt request status for the COP. This is the logical OR of ISR (latched status) and FIR (force status), AND'd with IER (interrupt enable) and NOT IEP_CLASS (interrupt class).">
+      <addr name="VIRQ_COP" addr="0x4"/>
+    </reg>
+    <reg name="VFIQ_CPU" desc="Valid interrupt status for the CPU. This is the logical OR of ISR (latched status) and FIR (force status), AND'd with IER (interrupt enable) and IEP_CLASS (interrupt class).">
+      <addr name="VFIQ_CPU" addr="0x8"/>
+    </reg>
+    <reg name="VFIQ_COP" desc="Valid interrupt status for the COP. This is the logical OR of ISR (latched status) and FIR (force status), AND'd with IER (interrupt enable) and IEP_CLASS (interrupt class).">
+      <addr name="VFIQ_COP" addr="0xc"/>
+    </reg>
+    <reg name="ISR" desc="Latched hardware interrupt status">
+      <addr name="ISR" addr="0x10"/>
+    </reg>
+    <reg name="FIR" desc="Forced interrupt status." sct="yes">
+      <addr name="FIR" addr="0x14"/>
+    </reg>
+    <reg name="CPU_IER" desc="Enabled interrupt sources for the CPU" sct="yes">
+      <addr name="CPU_IER" addr="0x20"/>
+    </reg>
+    <reg name="CPU_IEP_CLASS" desc="Interrupt enable priority class (FIQ/IRQ) for the CPU">
+      <addr name="CPU_IEP_CLASS" addr="0x2c"/>
+    </reg>
+    <reg name="COP_IER" desc="Enabled interrupt sources for the COP" sct="yes">
+      <addr name="COP_IER" addr="0x30"/>
+    </reg>
+    <reg name="COP_IEP_CLASS" desc="Interrupt enable priority class (FIQ/IRQ) for the COP">
+      <addr name="COP_IEP_CLASS" addr="0x3c"/>
+    </reg>
+  </dev>
+  <dev name="ICTLR_ARBGNT" long_name="Interrupt Controller Arbitration Semaphores" desc="" version="1.0">
+    <addr name="PRI_ICTLR_ARBGNT" addr="0x60004040"/>
+    <reg name="CPU_STATUS" desc="CPU interrupt status">
+      <addr name="CPU_STATUS" addr="0x0"/>
+    </reg>
+    <reg name="CPU_ENABLE" desc="CPU interrupt enable">
+      <addr name="CPU_ENABLE" addr="0x4"/>
+    </reg>
+    <reg name="COP_STATUS" desc="COP interrupt status">
+      <addr name="COP_STATUS" addr="0x8"/>
+    </reg>
+    <reg name="COP_ENABLE" desc="COP interrupt enable">
+      <addr name="COP_ENABLE" addr="0xc"/>
+    </reg>
+  </dev>
+  <dev name="ICTLR_DRQ" long_name="Interrupt Controller Device Request" desc="This interurupt controller allows to perform soft DMA when there are not enought hardware DMA channels to process a DMA request" version="1.0">
+    <addr name="SEC_ICTLR_DRQ" addr="0x60004140"/>
+    <reg name="TX_STATUS" desc="Interrupt source status">
+      <addr name="TX_STATUS" addr="0x0"/>
+    </reg>
+    <reg name="TX_ENABLE" desc="Interrupt source enable">
+      <addr name="TX_ENABLE" addr="0x4"/>
+    </reg>
+    <reg name="RX_STATUS" desc="Interrupt source status">
+      <addr name="RX_STATUS" addr="0x8"/>
+    </reg>
+    <reg name="RX_ENABLE" desc="Interrupt source enable">
+      <addr name="RX_ENABLE" addr="0xc"/>
     </reg>
   </dev>
   <dev name="LCD3" long_name="TFT LCD controller" desc="" version="1.0">
@@ -541,14 +478,69 @@
       <field name="ENTRY" desc="" bitrange="31:0"/>
     </reg>
   </dev>
-  <dev name="PROC" long_name="Processor control" desc="" version="1.0">
-    <addr name="PROC" addr="0x60000000"/>
-    <reg name="ID" desc="This registers gives the ID of the processor, which can either be the main CPU or the COP.">
-      <addr name="ID" addr="0x0"/>
-      <field name="ID" desc="Processor ID" bitrange="7:0">
-        <value name="CPU" value="0x55" desc=""/>
-        <value name="COP" value="0xaa" desc=""/>
+  <dev name="MISC" long_name="Miscellanous Register" desc="" version="1.0">
+    <addr name="MISC" addr="0x70000000"/>
+    <reg name="VER1" desc="">
+      <addr name="VER1" addr="0x0"/>
+      <field name="LOW_ID" desc="Low part of the chip ID" bitrange="31:16">
+        <value name="10" value="0x3130" desc="The string &quot;10&quot;"/>
       </field>
+      <field name="REV" desc="Chip revision" bitrange="15:0">
+        <value name="B1" value="0x4231" desc="The string &quot;B1&quot;"/>
+      </field>
+    </reg>
+    <reg name="VER2" desc="">
+      <addr name="VER2" addr="0x4"/>
+      <field name="PP" desc="" bitrange="31:16">
+        <value name="PP" value="0x5050" desc="The string &quot;PP&quot;"/>
+      </field>
+      <field name="HIGH_ID" desc="High part of the chip ID" bitrange="15:0">
+        <value name="61" value="0x3631" desc="The string &quot;61&quot;"/>
+      </field>
+    </reg>
+    <reg name="STRAP_OPT_A" desc="Capture the hardware state at reboot">
+      <addr name="STRAP_OPT_A" addr="0x8"/>
+    </reg>
+    <reg name="STRAP_OPT_B" desc="Capture the hardware state at reboot">
+      <addr name="STRAP_OPT_B" addr="0xc"/>
+    </reg>
+    <reg name="INIT1" desc="">
+      <addr name="INIT1" addr="0x10"/>
+    </reg>
+    <reg name="INIT3" desc="">
+      <addr name="INIT3" addr="0x14"/>
+    </reg>
+    <reg name="INIT4" desc="">
+      <addr name="INIT4" addr="0x18"/>
+      <field name="PLL2" desc="unsure" bitrange="4:4"/>
+    </reg>
+    <reg name="INIT2" desc="">
+      <addr name="INIT2" addr="0x20"/>
+      <field name="USB" desc="" bitrange="31:31"/>
+      <field name="PLL" desc="" bitrange="30:30"/>
+    </reg>
+    <reg name="USB_OTG" desc="">
+      <addr name="USB_OTG" addr="0x28"/>
+      <field name="SUSP_CLR" desc="Write a 1 to bring PHY out of suspend mode" bitrange="11:11"/>
+      <field name="PCLKVLD" desc="PHY clock valid status" bitrange="7:7"/>
+      <field name="STATIC_GPI" desc="Status of the general purpose input ID pin" bitrange="1:1"/>
+      <field name="SUS_POL" desc="Polarity of the suspend signal" bitrange="0:0"/>
+    </reg>
+    <reg name="INIT6" desc="">
+      <addr name="INIT6" addr="0x30"/>
+    </reg>
+    <reg name="TIMING" desc="">
+      <addr name="TIMING" addr="0x34"/>
+    </reg>
+    <reg name="NOR_CFG" desc="">
+      <addr name="NOR_CFG" addr="0x38"/>
+    </reg>
+    <reg name="RAM_CFG" desc="">
+      <addr name="RAM_CFG" addr="0x3c"/>
+    </reg>
+    <reg name="INIT7" desc="">
+      <addr name="INIT7" addr="0x48"/>
+      <field name="UNK7_0" desc="" bitrange="7:0"/>
     </reg>
   </dev>
   <dev name="TIMER" long_name="Timers" desc="" version="1.0">
