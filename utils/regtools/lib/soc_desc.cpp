@@ -31,10 +31,12 @@
 #define XML_CHAR_TO_CHAR(s) ((const char *)(s))
 
 #define BEGIN_ATTR_MATCH(attr) \
-    for(xmlAttr *a = attr; a; a = a->next) {
+    for(xmlAttr *a = attr; a; a = a->next) { \
+        bool matched = false;
 
 #define MATCH_X_ATTR(attr_name, hook, ...) \
     if(strcmp(XML_CHAR_TO_CHAR(a->name), attr_name) == 0) { \
+        matched = true; \
         std::string s; \
         if(!parse_text_attr(a, s) || !hook(s, __VA_ARGS__)) \
             return false; \
@@ -42,13 +44,17 @@
 
 #define SOFT_MATCH_X_ATTR(attr_name, hook, ...) \
     if(strcmp(XML_CHAR_TO_CHAR(a->name), attr_name) == 0) { \
+        matched = true; \
         std::string s; \
         if(parse_text_attr(a, s)) \
             hook(s, __VA_ARGS__); \
     }
 
-#define SOFT_MATCH_SCT_ATTR(attr_name, var) \
-    SOFT_MATCH_X_ATTR(attr_name, validate_sct_hook, var)
+#define MATCH_SCT_ATTR(attr_name, var) \
+    MATCH_X_ATTR(attr_name, validate_sct_hook, var)
+
+#define MATCH_FLAGS_ATTR(attr_name, var) \
+    MATCH_X_ATTR(attr_name, validate_flags_hook, var)
 
 #define MATCH_TEXT_ATTR(attr_name, var) \
     MATCH_X_ATTR(attr_name, validate_string_hook, var)
@@ -60,6 +66,8 @@
     MATCH_X_ATTR(attr_name, validate_bitrange_hook, first, last)
 
 #define END_ATTR_MATCH() \
+    if(!matched) \
+        fprintf(stderr, "Warning: ignored '%s' attribute\n", XML_CHAR_TO_CHAR(a->name)); \
     }
 
 #define BEGIN_NODE_MATCH(node) \
@@ -93,8 +101,30 @@ bool validate_string_hook(const std::string& str, std::string& s)
 
 bool validate_sct_hook(const std::string& str, soc_reg_flags_t& flags)
 {
-    if(str == "yes") flags |= REG_HAS_SCT;
+    fprintf(stderr, "Warning: the 'sct' attribute is deprecated, use 'flags'\n");
+    if(str == "yes") flags |= REG_HAS_SET | REG_HAS_CLR | REG_HAS_TOG;
     else if(str != "no") return false;
+    return true;
+}
+
+bool validate_flags_hook(const std::string& str, soc_reg_flags_t& flags)
+{
+    size_t pos = 0;
+    while(pos < str.size())
+    {
+        size_t end = str.find(',', pos);
+        // FIXMEa
+        std::string elem = str.substr(pos, end == std::string::npos ? end : end - pos);
+        if(elem == "set") flags |= REG_HAS_SET;
+        else if(elem == "clr") flags |= REG_HAS_CLR;
+        else if(elem == "tog") flags |= REG_HAS_TOG;
+        else
+        {
+            fprintf(stderr, "Unknown flag '%s'\n", elem.c_str());
+            return false;
+        }
+        pos = (end == std::string::npos ? end : end + 1);
+    }
     return true;
 }
 
@@ -201,7 +231,8 @@ bool parse_reg_elem(xmlNode *node, soc_reg_t& reg)
     std::list< soc_reg_formula_t > formulas;
     BEGIN_ATTR_MATCH(node->properties)
         MATCH_TEXT_ATTR("name", reg.name)
-        SOFT_MATCH_SCT_ATTR("sct", reg.flags)
+        MATCH_SCT_ATTR("sct", reg.flags)
+        MATCH_FLAGS_ATTR("flags", reg.flags)
         SOFT_MATCH_X_ATTR("addr", parse_add_trivial_addr, reg)
         MATCH_TEXT_ATTR("desc", reg.desc)
     END_ATTR_MATCH()
@@ -233,8 +264,20 @@ bool parse_dev_addr_elem(xmlNode *node, soc_dev_addr_t& addr)
     return true;
 }
 
+bool parse_dev_formula_elem(xmlNode *node, soc_dev_formula_t& formula)
+{
+    BEGIN_ATTR_MATCH(node->properties)
+        MATCH_TEXT_ATTR("string", formula.string)
+    END_ATTR_MATCH()
+
+    formula.type = DEV_FORMULA_STRING;
+
+    return true;
+}
+
 bool parse_dev_elem(xmlNode *node, soc_dev_t& dev)
 {
+    std::list< soc_dev_formula_t > formulas;
     BEGIN_ATTR_MATCH(node->properties)
         MATCH_TEXT_ATTR("name", dev.name)
         MATCH_TEXT_ATTR("long_name", dev.long_name)
@@ -244,8 +287,17 @@ bool parse_dev_elem(xmlNode *node, soc_dev_t& dev)
 
     BEGIN_NODE_MATCH(node->children)
         MATCH_ELEM_NODE("addr", dev.addr, parse_dev_addr_elem)
+        MATCH_ELEM_NODE("formula", formulas, parse_dev_formula_elem)
         MATCH_ELEM_NODE("reg", dev.reg, parse_reg_elem)
     END_NODE_MATCH()
+
+    if(formulas.size() > 1)
+    {
+        fprintf(stderr, "Only one formula is allowed per device\n");
+        return false;
+    }
+    if(formulas.size() == 1)
+        dev.formula = formulas.front();
 
     return true;
 }
@@ -342,8 +394,17 @@ int produce_reg(xmlTextWriterPtr writer, const soc_reg_t& reg)
     /* name */
     SAFE(xmlTextWriterWriteAttribute(writer, BAD_CAST "desc", BAD_CAST reg.desc.c_str()));
     /* flags */
-    if(reg.flags & REG_HAS_SCT)
-        SAFE(xmlTextWriterWriteAttribute(writer, BAD_CAST "sct", BAD_CAST "yes"));
+    if(reg.flags)
+    {
+        std::string flags;
+        if(reg.flags & REG_HAS_SET) flags += ",set";
+        if(reg.flags & REG_HAS_CLR) flags += ",clr";
+        if(reg.flags & REG_HAS_TOG) flags += ",tog";
+        if(flags.size() > 0)
+            flags = flags.substr(1); // remove initial comma
+
+        SAFE(xmlTextWriterWriteAttribute(writer, BAD_CAST "flags", BAD_CAST flags.c_str()));
+    }
     /* formula */
     if(reg.formula.type != REG_FORMULA_NONE)
     {
@@ -395,6 +456,23 @@ int produce_dev(xmlTextWriterPtr writer, const soc_dev_t& dev)
     SAFE(xmlTextWriterWriteAttribute(writer, BAD_CAST "desc", BAD_CAST dev.desc.c_str()));
     /* version */
     SAFE(xmlTextWriterWriteAttribute(writer, BAD_CAST "version", BAD_CAST dev.version.c_str()));
+    /* formula */
+    if(dev.formula.type != DEV_FORMULA_NONE)
+    {
+        /* <formula> */
+        SAFE(xmlTextWriterStartElement(writer, BAD_CAST "formula"));
+        switch(dev.formula.type)
+        {
+            case DEV_FORMULA_STRING:
+                SAFE(xmlTextWriterWriteAttribute(writer, BAD_CAST "string",
+                    BAD_CAST dev.formula.string.c_str()));
+                break;
+            default:
+                break;
+        }
+        /* </formula> */
+        SAFE(xmlTextWriterEndElement(writer));
+    }
     /* addresses */
     for(size_t i = 0; i < dev.addr.size(); i++)
     {
@@ -711,6 +789,15 @@ std::vector< soc_error_t > soc_dev_addr_t::errors(bool recursive)
         return no_error();
 }
 
+std::vector< soc_error_t > soc_dev_formula_t::errors(bool recursive)
+{
+    (void) recursive;
+    if(type == DEV_FORMULA_STRING && string.size() == 0)
+        return one_error(make_fatal("", "empty string formula"));
+    else
+        return no_error();
+}
+
 std::vector< soc_error_t > soc_dev_t::errors(bool recursive)
 {
     std::vector< soc_error_t >  err;
@@ -719,6 +806,8 @@ std::vector< soc_error_t > soc_dev_t::errors(bool recursive)
         err.push_back(make_fatal(at, "empty name"));
     else if(!name_valid(name))
         err.push_back(make_fatal(at, "invalid name"));
+    if(recursive)
+        add_errors(err, formula.errors(true), at);
     for(size_t i = 0; i < addr.size(); i++)
     {
         for(size_t j = 0; j < addr.size(); j++)

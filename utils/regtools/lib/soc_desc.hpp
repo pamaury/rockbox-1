@@ -81,8 +81,18 @@ enum soc_reg_formula_type_t
     REG_FORMULA_STRING, /// register has a generic formula represented by a string
 };
 
+/** SoC device generic formula */
+enum soc_dev_formula_type_t
+{
+    DEV_FORMULA_NONE, /// device has no generic formula
+    DEV_FORMULA_STRING, /// device has a generic formula represented by a string
+};
+
 /** <soc_reg_t>.<flags> values */
-const soc_reg_flags_t REG_HAS_SCT = 1 << 0; /// register SCT variants
+const soc_reg_flags_t REG_HAS_SET = 1 << 0; /// register has SET variant at address +4
+const soc_reg_flags_t REG_HAS_CLR = 1 << 1; /// register has CLR variant at address +8
+const soc_reg_flags_t REG_HAS_TOG = 1 << 2; /// register has TOG variant at address +12
+const soc_reg_flags_t __attribute__((deprecated)) REG_HAS_SCT = 3 << 0; /// register has SCT variants
 
 /** SoC register field named value */
 struct soc_reg_field_value_t
@@ -163,6 +173,15 @@ struct soc_dev_addr_t
     std::vector< soc_error_t > errors(bool recursive);
 };
 
+/** SoC device formula */
+struct soc_dev_formula_t
+{
+    enum soc_dev_formula_type_t type;
+    std::string string; /// for STRING
+
+    std::vector< soc_error_t > errors(bool recursive);
+};
+
 /** SoC device */
 struct soc_dev_t
 {
@@ -170,7 +189,8 @@ struct soc_dev_t
     std::string long_name; /// human friendly name
     std::string desc; /// human description
     std::string version; /// description version
-    std::vector< soc_dev_addr_t > addr;
+    std::vector< soc_dev_addr_t > addr; /// instances of the device
+    soc_dev_formula_t formula; /// formula for the instance addresses
 
     std::vector< soc_reg_t > reg;
 
