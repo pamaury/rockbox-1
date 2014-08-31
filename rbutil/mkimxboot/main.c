@@ -255,8 +255,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if(md5type && print_md5(infile, md5type) != 0)
-        return 1;
+    if(md5type)
+        return print_md5(infile, md5type);
 
     if(!outfile)
     {
