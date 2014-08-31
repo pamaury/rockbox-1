@@ -936,6 +936,8 @@ struct sb_file_t *sb_read_memory(void *_buf, size_t filesize, bool raw_mode, voi
         memcpy(sb_file->real_key, real_key, 16);
         memcpy(sb_file->crypto_iv, buf, 16);
     }
+    else
+        valid_key = true;
 
     /* sections */
     if(!raw_mode)
