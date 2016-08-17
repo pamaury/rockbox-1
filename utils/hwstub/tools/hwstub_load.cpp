@@ -24,6 +24,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <iostream>
 #include "hwstub.hpp"
 #include "hwstub_uri.hpp"
 
@@ -105,10 +106,11 @@ bool could_be_rockbox(unsigned char *buffer, size_t size)
 
 void usage(void)
 {
-    printf("usage: hwstub::load [options] <addr> <file>\n");
+    printf("usage: hwstub_load [options] <addr> <file>\n");
     printf("options:\n");
     printf("  --help/-?       Display this help\n");
     printf("  --quiet/-q      Quiet output\n");
+    printf("  --verbose/-v    Verbose output\n");
     printf("  --type/-t <t>   Override file type\n");
     printf("  --dev/-d <uri>  Device URI (see below)\n");
     printf("  --noload        Skip loading stage and only execute the given address\n");
@@ -131,22 +133,24 @@ int main(int argc, char **argv)
     enum image_type_t type = IT_DETECT;
     const char *uri = hwstub::uri::default_uri().full_uri().c_str();
     bool no_load = false, no_exec = false;
+    bool verbose = false;
 
     // parse command line
     while(1)
     {
         static struct option long_options[] =
         {
-            {"help", no_argument, 0, '?'},
+            {"help", no_argument, 0, 'h'},
             {"quiet", no_argument, 0, 'q'},
             {"type", required_argument, 0, 't'},
             {"dev", required_argument, 0, 'd'},
             {"noload", no_argument, 0, 'e'},
             {"noexec", no_argument, 0, 'l'},
+            {"verbose", no_argument, 0, 'v'},
             {0, 0, 0, 0}
         };
 
-        int c = getopt_long(argc, argv, "?qt:d:el", long_options, NULL);
+        int c = getopt_long(argc, argv, "hqt:d:elv", long_options, NULL);
         if(c == -1)
             break;
         switch(c)
@@ -156,7 +160,10 @@ int main(int argc, char **argv)
             case 'q':
                 quiet = true;
                 break;
-            case '?':
+            case 'v':
+                verbose = true;
+                break;
+            case 'h':
                 usage();
                 break;
             case 't':
@@ -247,6 +254,8 @@ int main(int argc, char **argv)
         printf("Cannot create context: %s\n", errstr.c_str());
         return 1;
     }
+    if(verbose)
+        hwctx->set_debug(std::cout);
     std::vector<std::shared_ptr<hwstub::device>> list;
     hwstub::error ret = hwctx->get_device_list(list);
     if(ret != hwstub::error::SUCCESS)

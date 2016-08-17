@@ -211,7 +211,7 @@ build() {
             ./configure --prefix=$prefix $configure_params
         ;;
         *)
-            CFLAGS=-U_FORTIFY_SOURCE ../$toolname-$version/configure --target=$target --prefix=$prefix --enable-languages=c --disable-libssp --disable-docs $configure_params
+            CFLAGS="-U_FORTIFY_SOURCE -fgnu89-inline"  ../$toolname-$version/configure --target=$target --prefix=$prefix --enable-languages=c --disable-libssp --disable-docs $configure_params
         ;;
     esac
 
@@ -366,12 +366,8 @@ do
             ;;
 
         [Ii])
-            build "binutils" "mipsel-elf" "2.17" "" "--disable-werror"
-            patch=""
-            if [ "$system" = "Interix" ]; then
-                patch="gcc-4.1.2-interix.diff"
-            fi
-            build "gcc" "mipsel-elf" "4.1.2" "$patch"
+            build "binutils" "mipsel-elf" "2.22" "" "--disable-werror"
+            build "gcc" "mipsel-elf" "4.6.3" "" "MAKEINFO=missing" "gmp mpfr mpc"
             ;;
 
         [Mm])
